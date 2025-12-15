@@ -17,7 +17,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     // If not authenticated, redirect to login
     if (!user) {
-      router.push('/login');
+      router.push('/auth/login');
       return;
     }
 

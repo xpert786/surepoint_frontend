@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -229,4 +230,34 @@ export async function getUserData(uid: string): Promise<User | null> {
 
 export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
   return onAuthStateChanged(auth, callback);
+}
+
+export async function resetPassword(email: string) {
+  try {
+    if (!auth) {
+      throw new Error('Firebase Auth is not initialized. Please check your Firebase configuration.');
+    }
+
+    if (!email || !email.trim()) {
+      throw new Error('Email is required.');
+    }
+
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error: any) {
+    // Provide more helpful error messages
+    let errorMessage = error.message;
+    
+    if (error.code === 'auth/user-not-found') {
+      // Don't reveal if user exists or not for security
+      errorMessage = 'If an account exists with this email, a password reset link has been sent.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address. Please check your email format.';
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Too many requests. Please try again later.';
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'Network error. Please check your internet connection.';
+    }
+    
+    throw new Error(errorMessage);
+  }
 }

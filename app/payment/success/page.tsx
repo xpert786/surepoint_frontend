@@ -22,7 +22,7 @@ function PaymentSuccessContent() {
 
     // If not authenticated, redirect to login
     if (!user) {
-      router.push('/login');
+      router.push('/auth/login');
       return;
     }
 
@@ -42,16 +42,62 @@ function PaymentSuccessContent() {
 
         // Verify payment with Stripe first
         let paymentVerified = false;
+        let sessionData: any = null;
         try {
           const verifyResponse = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`);
-          const verifyData = await verifyResponse.json();
-          paymentVerified = verifyData.paid === true;
+          sessionData = await verifyResponse.json();
+          paymentVerified = sessionData.paid === true;
         } catch (err) {
           console.error('Error verifying session:', err);
         }
 
         // Check billing status (might be updated by webhook)
         const billingStatus = userData?.billing?.status || userData?.paymentStatus;
+        
+        // If payment is verified but billing not updated, manually update it
+        if (paymentVerified && billingStatus !== 'active' && billingStatus !== 'paid') {
+          console.log('💳 Payment verified but billing not updated, manually updating...');
+          try {
+            const updateResponse = await fetch('/api/stripe/update-billing-after-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                sessionId: sessionId,
+                userId: user?.uid,
+              }),
+            });
+
+            if (updateResponse.ok) {
+              const updateResult = await updateResponse.json();
+              console.log('✅ Manually updated billing status:', updateResult);
+              console.log('🔄 Refreshing user data...');
+              await refreshUserData();
+              // Wait a moment for the context to update
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Verify the update worked
+              const updatedUserData = await fetch(`/api/debug/user-billing?userId=${user?.uid}`);
+              if (updatedUserData.ok) {
+                const debugData = await updatedUserData.json();
+                console.log('📊 Current billing status in DB:', debugData.data);
+              }
+            } else {
+              let errorData;
+              try {
+                errorData = await updateResponse.json();
+              } catch {
+                errorData = { error: `HTTP ${updateResponse.status}: ${updateResponse.statusText}` };
+              }
+              console.error('❌ Failed to manually update billing:', errorData);
+              console.error('Response status:', updateResponse.status);
+              // Don't fail the flow - webhook might still process it
+            }
+          } catch (updateErr) {
+            console.error('❌ Error manually updating billing:', updateErr);
+          }
+        }
         
         if (paymentVerified || billingStatus === 'active' || billingStatus === 'paid') {
           // Payment is verified, refresh user data and redirect

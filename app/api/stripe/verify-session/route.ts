@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
       paid: session.payment_status === 'paid',
       status: session.payment_status,
       customer: session.customer,
+      metadata: session.metadata,
+      plan: session.metadata?.plan || 'basic',
     });
   } catch (error: any) {
     console.error('Session verification error:', error);

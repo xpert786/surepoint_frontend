@@ -7,13 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "add-dummy-data": "npx tsx scripts/add-dummy-data.ts"
+    "add-dummy-data": "npx tsx scripts/add-dummy-data.ts",
+    "flush-db": "npx tsx scripts/flush-db.ts",
+    "flush-auth": "npx tsx scripts/flush-auth.ts",
+    "flush-all": "npm run flush-db && npm run flush-auth"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^5.3.0",
     "@stripe/stripe-js": "^8.5.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "lucide-react": "^0.554.0",

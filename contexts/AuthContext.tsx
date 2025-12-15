@@ -57,24 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check payment status when user data changes
   // Only run on client side to avoid hydration mismatch
-  useEffect(() => {
-    // Ensure we're on client side
-    if (typeof window === 'undefined') return;
-    
-    if (userData) {
-      const currentPath = window.location.pathname;
-      
-      // If user is on login page and already authenticated, redirect based on billing status
-      if (currentPath === '/login' && userData) {
-        const billingStatus = userData.billing?.status || userData.paymentStatus;
-        if (billingStatus === 'active' || billingStatus === 'paid') {
-          window.location.href = '/dashboard';
-        } else {
-          window.location.href = '/payment';
-        }
-      }
-    }
-  }, [userData]);
+  // DISABLED: Automatic redirect from login page
+  // useEffect(() => {
+  //   // Ensure we're on client side
+  //   if (typeof window === 'undefined') return;
+  //   
+  //   if (userData) {
+  //     const currentPath = window.location.pathname;
+  //     
+  //     // If user is on login page and already authenticated, redirect based on billing status
+  //     if (currentPath === '/auth/login' && userData) {
+  //       const billingStatus = userData.billing?.status || userData.paymentStatus;
+  //       if (billingStatus === 'active' || billingStatus === 'paid') {
+  //         window.location.href = '/dashboard';
+  //       } else {
+  //         window.location.href = '/payment';
+  //       }
+  //     }
+  //   }
+  // }, [userData]);
 
   const signIn = async (email: string, password: string) => {
     const { signIn: firebaseSignIn } = await import('@/lib/firebase/auth');

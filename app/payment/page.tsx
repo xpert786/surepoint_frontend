@@ -48,7 +48,7 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/auth/login');
     }
     // If billing is already active, redirect to dashboard
     if (!loading && userData) {
@@ -116,15 +116,28 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen  py-12 px-4"
+    style={{
+      background: 'linear-gradient(115.96deg, #D7F1FF 0.61%, #F9EBDC 99.39%)'
+
+    }}
+    >
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Plan
+            Activate your warehouse workspace
           </h1>
           <p className="text-lg text-gray-600">
-            Select a plan to access the Surepoint dashboard
+          Choose a plan to get started
           </p>
+          <div className=" flex justify-center border border-[#E79138] items-center text-white rounded-lg px-4 py-2 w-fit mx-auto mt-2"
+          style={{background: '#E791381A'}}
+          >
+            <p className="text-sm text-[#E79138]">
+            Subscription Status: Pending
+            </p>
+
+          </div>
         </div>
 
         {error && (
@@ -139,17 +152,17 @@ export default function PaymentPage() {
           {Object.entries(PLANS).map(([key, plan]) => (
             <Card
               key={key}
-              className={`cursor-pointer transition-all ${
+              className={`cursor-pointer transition-all shadow-none ${
                 selectedPlan === key
-                  ? 'ring-2 ring-blue-600 shadow-lg'
-                  : 'hover:shadow-md'
+                  ? 'ring-2 ring-[#E79138]'
+                  : ''
               }`}
               onClick={() => setSelectedPlan(key as keyof typeof PLANS)}
             >
               <CardHeader>
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardTitle className="text-lg font-medium">{plan.name}</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">${plan.price}</span>
+                  <span className="text-2xl font-bold">${plan.price}</span>
                   <span className="text-gray-600">/month</span>
                 </div>
               </CardHeader>
@@ -157,28 +170,72 @@ export default function PaymentPage() {
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{feature}</span>
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 0C4.05 0 0 4.05 0 9C0 13.95 4.05 18 9 18C13.95 18 18 13.95 18 9C18 4.05 13.95 0 9 0ZM7.2 13.5L2.7 9L3.969 7.731L7.2 10.953L14.031 4.122L15.3 5.4L7.2 13.5Z" fill="#4CAF50"/>
+                      </svg>
+                      <span className="text-gray-700 ml-2">{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <Button
-                  variant={selectedPlan === key ? 'primary' : 'outline'}
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedPlan(key as keyof typeof PLANS);
-                  }}
-                >
-                  {selectedPlan === key ? 'Selected' : 'Select Plan'}
-                </Button>
+               
               </CardContent>
             </Card>
           ))}
         </div>
 
+        {/* Billing Summary */}
+        <div className=" mx-auto mb-8">
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-[#020F3F]">
+                Billing Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Plan Line */}
+                <div className="flex justify-between items-center">
+                  <span className="text-[#020F3F] font-medium">
+                    {PLANS[selectedPlan].name}
+                  </span>
+                  <span className="text-gray-500">
+                    ${PLANS[selectedPlan].price}/month
+                  </span>
+                </div>
+
+                {/* Separator */}
+                <div className="border-t border-gray-200"></div>
+
+                {/* Total Line */}
+                <div className="flex justify-between items-center">
+                  <span className="text-[#020F3F] font-medium">
+                    Total due today
+                  </span>
+                  <span className="text-gray-500 font-semibold">
+                    ${PLANS[selectedPlan].price}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <Button
+                  onClick={handleCheckout}
+                  disabled={isProcessing}
+                  isLoading={isProcessing}
+                  className="w-fit bg-[#E79138] text-white text-sm rounded-full px-4 py-2"
+                  size="lg"
+                >
+                  {isProcessing ? 'Processing...' : `Continue to Payment
+                  `}
+                  <svg width="14" height="11" viewBox="0 0 14 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0.75 5.25H12.75M12.75 5.25L8.25 9.75M12.75 5.25L8.25 0.75" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+
+                </Button>
+
         <div className="max-w-2xl mx-auto">
-          <Card>
+          <Card className="shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
@@ -202,15 +259,7 @@ export default function PaymentPage() {
                   </ul>
                 </div>
 
-                <Button
-                  onClick={handleCheckout}
-                  disabled={isProcessing}
-                  isLoading={isProcessing}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isProcessing ? 'Processing...' : `Continue to Payment - $${PLANS[selectedPlan].price}/month`}
-                </Button>
+                
 
                 <p className="text-xs text-gray-500 text-center">
                   By continuing, you agree to our terms of service and privacy policy.
@@ -219,6 +268,7 @@ export default function PaymentPage() {
               </div>
             </CardContent>
           </Card>
+          
         </div>
       </div>
     </div>

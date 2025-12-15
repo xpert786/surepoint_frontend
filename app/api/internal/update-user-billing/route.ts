@@ -64,7 +64,14 @@ export async function POST(request: NextRequest) {
       firestoreUpdates.subscriptionTier = updates.subscriptionTier;
     }
     if (updates.paymentDate !== undefined) {
-      firestoreUpdates.paymentDate = updates.paymentDate ? FieldValue.serverTimestamp() : null;
+      // If it's a string ISO date, convert it to a Timestamp
+      if (typeof updates.paymentDate === 'string') {
+        firestoreUpdates.paymentDate = new Date(updates.paymentDate);
+      } else if (updates.paymentDate) {
+        firestoreUpdates.paymentDate = FieldValue.serverTimestamp();
+      } else {
+        firestoreUpdates.paymentDate = null;
+      }
     }
     if (updates.stripeCustomerId !== undefined) {
       firestoreUpdates.stripeCustomerId = updates.stripeCustomerId;
@@ -84,7 +91,14 @@ export async function POST(request: NextRequest) {
       billingUpdates.plan = updates['billing.plan'];
     }
     if (updates['billing.paymentDate'] !== undefined) {
-      billingUpdates.paymentDate = updates['billing.paymentDate'] ? FieldValue.serverTimestamp() : null;
+      // If it's a string ISO date, convert it to a Timestamp
+      if (typeof updates['billing.paymentDate'] === 'string') {
+        billingUpdates.paymentDate = new Date(updates['billing.paymentDate']);
+      } else if (updates['billing.paymentDate']) {
+        billingUpdates.paymentDate = FieldValue.serverTimestamp();
+      } else {
+        billingUpdates.paymentDate = null;
+      }
     }
     if (updates['billing.stripeCustomerId'] !== undefined) {
       billingUpdates.stripeCustomerId = updates['billing.stripeCustomerId'];

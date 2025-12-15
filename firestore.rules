@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection: users can create and manage their own document
+    match /users/{userId} {
+      // Allow create: user must be authenticated and creating their own document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow read: user can read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow update: user can update their own document
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow delete: user can delete their own document (optional)
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Orders: clients can only see their own, COO can see all
+    match /orders/{orderId} {
+      allow read: if request.auth != null && (
+        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow write: if request.auth != null;
+    }
+    
+    // KPIs: same rules as orders
+    match /kpis/{kpiId} {
+      allow read: if request.auth != null && (
+        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow write: if request.auth != null;
+    }
+    
+    // Clients: only COO/admin can read
+    match /clients/{clientId} {
+      allow read: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow write: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    // Inventory: same rules as orders
+    match /inventory/{itemId} {
+      allow read: if request.auth != null && (
+        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+      allow write: if request.auth != null;
+    }
+  }
+}
+
