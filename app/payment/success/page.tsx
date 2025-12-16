@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 
 function PaymentSuccessContent() {
   const { user, userData, loading, refreshUserData } = useAuth();
@@ -108,12 +110,24 @@ function PaymentSuccessContent() {
             await refreshUserData();
             // Wait a moment for the context to update
             await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Mark onboarding flag on user
+            if (user?.uid) {
+              try {
+                await updateDoc(doc(db, 'users', user.uid), {
+                  isOnboarding: false,
+                });
+                await refreshUserData();
+              } catch (err) {
+                console.error('Error updating onboarding flag:', err);
+              }
+            }
           } catch (err) {
             console.error('Error refreshing user data:', err);
           }
           
-          // Redirect to dashboard
-          router.push('/dashboard');
+          // Redirect to onboarding
+          router.push('/onboarding/company');
         } else {
           // Poll for payment status update
           let attempts = 0;
@@ -135,12 +149,24 @@ function PaymentSuccessContent() {
                   await refreshUserData();
                   // Wait a moment for the context to update
                   await new Promise(resolve => setTimeout(resolve, 500));
+
+                  // Mark onboarding flag on user
+                  if (user?.uid) {
+                    try {
+                      await updateDoc(doc(db, 'users', user.uid), {
+                        isOnboarding: false,
+                      });
+                      await refreshUserData();
+                    } catch (err) {
+                      console.error('Error updating onboarding flag:', err);
+                    }
+                  }
                 } catch (err) {
                   console.error('Error refreshing user data:', err);
                 }
                 
-                // Redirect to dashboard
-                router.push('/dashboard');
+                // Redirect to onboarding
+                router.push('/onboarding/company');
               } else if (attempts >= maxAttempts) {
                 clearInterval(checkStatus);
                 setError('Payment verification is taking longer than expected. Your payment may still be processing. Please refresh the page in a moment.');
@@ -236,10 +262,10 @@ function PaymentSuccessContent() {
         <CardContent>
           <div className="text-center space-y-4">
             <p className="text-gray-600">
-              Your payment has been processed successfully. You now have access to the dashboard.
+              Your payment has been processed successfully. Let&apos;s finish setting up your account.
             </p>
             <p className="text-sm text-gray-500">
-              Redirecting to dashboard...
+              Redirecting to onboarding...
             </p>
             <Button
               onClick={async () => {
@@ -250,11 +276,11 @@ function PaymentSuccessContent() {
                 } catch (err) {
                   console.error('Error refreshing user data:', err);
                 }
-                router.push('/dashboard');
+                router.push('/onboarding/company');
               }}
               className="w-full"
             >
-              Go to Dashboard
+              Continue Setup
             </Button>
           </div>
         </CardContent>

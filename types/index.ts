@@ -6,6 +6,7 @@ export interface User {
   name: string;
   role: UserRole;
   clientId?: string; // For client users, link to their client record
+  isOnboarding?: boolean;
   paymentStatus?: 'pending' | 'paid' | 'failed' | 'cancelled'; // Legacy field
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
@@ -17,6 +18,24 @@ export interface User {
     paymentDate?: Date | null;
     stripeCustomerId?: string;
     stripeSessionId?: string;
+  };
+  onboardingInfo?: {
+    companyInfo?: {
+      businessName: string;
+      businessType: string;
+      registeredAddress: string;
+      warehouseAddress: string;
+      timezone: string;
+      supportEmail: string;
+      supportPhone: string;
+    };
+    teamInfo?: {
+      members: Array<{
+        name: string;
+        email: string;
+        role: string;
+      }>;
+    };
   };
   createdAt: Date;
   updatedAt: Date;

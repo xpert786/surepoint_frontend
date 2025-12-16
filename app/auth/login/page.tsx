@@ -83,7 +83,7 @@ export default function LoginPage() {
         </div>
 
         {/* Heading */}
-        <h1 className={`text-xl sm:text-2xl lg:text-2xl font-bold text-gray-800 ${isSignUp ? 'mb-2' : 'mb-3 sm:mb-4'}`}>
+        <h1 className={`text-xl sm:text-2xl lg:text-2xl font-bold text-gray-800 cursor-pointer ${isSignUp ? 'mb-2' : 'mb-3 sm:mb-4'}`}>
           {isSignUp ? 'Sign Up' : 'Log In'}
         </h1>
 
@@ -223,7 +223,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${isSignUp ? 'py-2' : 'py-2.5'}`}
+            className={`w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer ${isSignUp ? 'py-2' : 'py-2.5'}`}
           >
             {isLoading ? (
               <span>Loading...</span>
@@ -254,7 +254,7 @@ export default function LoginPage() {
             <div className="flex justify-center gap-4 mt-3">
               <button
                 type="button"
-                className="w-9 h-9 rounded-full border-2 border-[#1e3a5f] bg-white flex items-center justify-center hover:bg-gray-50 transition-colors"
+                className="w-9 h-9 rounded-full border-2 border-[#1e3a5f] bg-white flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
                 aria-label="Sign in with Google"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -279,7 +279,7 @@ export default function LoginPage() {
                 setError('');
                 setConfirmPassword('');
               }}
-              className="text-orange-500 font-medium hover:text-orange-600"
+              className="text-orange-500 font-medium hover:text-orange-600 cursor-pointer"
             >
               {isSignUp ? 'Sign in' : 'Sign up for free'}
             </button>
