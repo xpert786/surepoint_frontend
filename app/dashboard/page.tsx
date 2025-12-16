@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { OrdersChart } from '@/components/dashboard/OrdersChart';
@@ -10,7 +10,7 @@ import { getKPIs } from '@/lib/firebase/kpis';
 import { useAuth } from '@/contexts/AuthContext';
 import { Order, DashboardMetrics } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { Package, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Package, DollarSign } from 'lucide-react';
 
 export default function DashboardPage() {
   const { userData, loading: authLoading } = useAuth();
@@ -31,8 +31,9 @@ export default function DashboardPage() {
       
       try {
         // Fetch orders and KPIs in parallel for better performance
+        // Fetch more orders to calculate today/year metrics
         const [orders, kpis] = await Promise.all([
-          getOrders(userData.clientId, userData.role),
+          getOrders(userData.clientId, userData.role, 1000),
           getKPIs(userData.clientId, userData.role, 30)
         ]);
 
@@ -40,6 +41,32 @@ export default function DashboardPage() {
         const totalOrders = orders.length;
         const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
         const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+        
+        // Calculate today's metrics
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
+        
+        const ordersToday = orders.filter(order => {
+          const orderDate = order.createdAt instanceof Date 
+            ? order.createdAt 
+            : new Date(order.createdAt);
+          return orderDate >= today && orderDate <= todayEnd;
+        });
+        const revenueToday = ordersToday.reduce((sum, order) => sum + order.totalAmount, 0);
+        
+        // Calculate this year's metrics
+        const yearStart = new Date(today.getFullYear(), 0, 1);
+        const yearEnd = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
+        
+        const ordersThisYear = orders.filter(order => {
+          const orderDate = order.createdAt instanceof Date 
+            ? order.createdAt 
+            : new Date(order.createdAt);
+          return orderDate >= yearStart && orderDate <= yearEnd;
+        });
+        const revenueThisYear = ordersThisYear.reduce((sum, order) => sum + order.totalAmount, 0);
         
         // Single pass through orders for status counts
         let pendingOrders = 0;
@@ -63,8 +90,13 @@ export default function DashboardPage() {
           shippedOrders,
           fulfillmentRate,
           lowStockItems,
-          recentOrders: orders.slice(0, 5),
-        });
+          recentOrders: orders.slice(0, 7),
+          allOrders: orders,
+          ordersToday: ordersToday.length,
+          revenueToday,
+          ordersThisYear: ordersThisYear.length,
+          revenueThisYear,
+        } as any);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       } finally {
@@ -74,6 +106,9 @@ export default function DashboardPage() {
 
     loadDashboardData();
   }, [userData, mounted]);
+
+  // Calculate trend (placeholder - in real app, compare with previous period)
+  const trendValue = 12.5;
 
   // Show loading state during initial mount to prevent hydration mismatch
   if (!mounted || authLoading) {
@@ -94,10 +129,11 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 p-6">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back, {userData?.name || 'User'}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-gray-600">Welcome back! Here's what's happening today..</p>
         </div>
 
         {isLoading ? (
@@ -109,56 +145,39 @@ export default function DashboardPage() {
           </div>
         ) : metrics ? (
           <>
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <MetricCard
-                title="Total Orders"
-                value={metrics.totalOrders}
-                description="All time"
+                title="Orders Today"
+                value={(metrics as any).ordersToday ?? 0}
                 icon={Package}
+                trend={{ value: trendValue, isPositive: true }}
               />
               <MetricCard
-                title="Total Revenue"
-                value={formatCurrency(metrics.totalRevenue)}
-                description="All time"
+                title="Revenue Today"
+                value={formatCurrency((metrics as any).revenueToday || 0)}
                 icon={DollarSign}
+                trend={{ value: trendValue, isPositive: true }}
               />
               <MetricCard
-                title="Avg Order Value"
-                value={formatCurrency(metrics.averageOrderValue)}
-                description="Last 30 days"
-                icon={TrendingUp}
+                title="Orders This Year"
+                value={((metrics as any).ordersThisYear || 0).toLocaleString()}
+                icon={Package}
+                trend={{ value: trendValue, isPositive: true }}
               />
               <MetricCard
-                title="Pending Orders"
-                value={metrics.pendingOrders}
-                description="Requires attention"
-                icon={AlertCircle}
+                title="Revenue This Year"
+                value={formatCurrency((metrics as any).revenueThisYear || 0)}
+                icon={DollarSign}
+                trend={{ value: trendValue, isPositive: true }}
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <OrdersChart orders={metrics.recentOrders} />
-              <RecentOrders orders={metrics.recentOrders} />
-            </div>
+            {/* Charts */}
+            <OrdersChart orders={(metrics as any).allOrders || metrics.recentOrders} />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <MetricCard
-                title="Fulfillment Rate"
-                value={`${metrics.fulfillmentRate.toFixed(1)}%`}
-                description="Orders shipped/delivered"
-              />
-              <MetricCard
-                title="Shipped Orders"
-                value={metrics.shippedOrders}
-                description="Completed shipments"
-              />
-              <MetricCard
-                title="Low Stock Items"
-                value={metrics.lowStockItems}
-                description="Needs restocking"
-                icon={AlertCircle}
-              />
-            </div>
+            {/* Order List Table */}
+            <RecentOrders orders={metrics.recentOrders} />
           </>
         ) : (
           <div className="text-center py-12">
