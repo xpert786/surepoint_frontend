@@ -76,6 +76,7 @@ export async function signUp(
       name: name.trim(),
       role: role || 'client',
       ...(clientId && { clientId }), // Only include if provided
+      isOnboarding: false,
       paymentStatus: 'pending', // Default to pending payment
       billing: {
         status: 'inactive' as const, // inactive, active, cancelled, failed
