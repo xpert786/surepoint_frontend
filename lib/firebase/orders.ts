@@ -12,7 +12,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './config';
-import { Order, UserRole } from '@/types';
+import { Order, UserRole, Address } from '@/types';
 
 export async function getOrders(clientId?: string, userRole?: UserRole, limitCount: number = 50): Promise<Order[]> {
   try {
@@ -64,22 +64,54 @@ export async function getOrders(clientId?: string, userRole?: UserRole, limitCou
         orderDate = new Date();
       }
       
-      const order = {
+      // Parse line items if they exist
+      let items: any[] = [];
+      if (data['Line Items']) {
+        // Try to parse line items string if it's a string
+        const lineItemsStr = typeof data['Line Items'] === 'string' ? data['Line Items'] : '';
+        // For now, create a simple item from the string
+        if (lineItemsStr) {
+          items = [{
+            id: '1',
+            productName: lineItemsStr,
+            sku: '',
+            quantity: 1,
+            price: parseFloat(data['Subtotal'] || '0'),
+            total: parseFloat(data['Subtotal'] || '0'),
+          }];
+        }
+      }
+
+      // Determine fulfillment status from order status
+      let fulfillmentStatus: 'unfulfilled' | 'partial' | 'fulfilled' = 'unfulfilled';
+      const status = (data['Status'] || 'pending').toLowerCase();
+      if (status === 'fulfilled' || status === 'delivered') {
+        fulfillmentStatus = 'fulfilled';
+      } else if (status === 'processing' || status === 'shipped') {
+        fulfillmentStatus = 'partial';
+      }
+
+      const order: Order = {
         id: doc.id,
         orderNumber: data['Order ID']?.toString() || data['Shopify Order Number']?.toString() || doc.id,
         customerName: data['Customer Name'] || data['Clients name'] || 'N/A',
         customerEmail: data['Customer Email'] || '',
-        status: data['Status'] || 'pending',
+        status: (data['Status'] || 'pending') as any,
+        fulfillmentStatus,
+        items,
         totalAmount: parseFloat(data['Total'] || data['Subtotal'] || '0'),
         currency: data['Currency'] || 'USD',
         clientId: data['client_id'] || data['clientId'] || '',
+        shippingAddress: {
+          street: data['Shipping Address']?.street || data['Address']?.street || '',
+          city: data['Shipping Address']?.city || data['Address']?.city || '',
+          state: data['Shipping Address']?.state || data['Address']?.state || '',
+          zipCode: data['Shipping Address']?.zipCode || data['Address']?.zipCode || '',
+          country: data['Shipping Address']?.country || data['Address']?.country || 'US',
+        },
         createdAt: orderDate,
         updatedAt: orderDate,
-        // Map other fields if they exist
-        lineItems: data['Line Items'] || '',
-        shipping: parseFloat(data['Shipping'] || '0'),
-        subtotal: parseFloat(data['Subtotal'] || '0'),
-      } as Order;
+      };
       
       console.log('Mapped order:', order);
       return order;
@@ -117,21 +149,52 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
         orderDate = new Date();
       }
       
+      // Parse line items if they exist
+      let items: any[] = [];
+      if (data['Line Items']) {
+        const lineItemsStr = typeof data['Line Items'] === 'string' ? data['Line Items'] : '';
+        if (lineItemsStr) {
+          items = [{
+            id: '1',
+            productName: lineItemsStr,
+            sku: '',
+            quantity: 1,
+            price: parseFloat(data['Subtotal'] || '0'),
+            total: parseFloat(data['Subtotal'] || '0'),
+          }];
+        }
+      }
+
+      // Determine fulfillment status from order status
+      let fulfillmentStatus: 'unfulfilled' | 'partial' | 'fulfilled' = 'unfulfilled';
+      const status = (data['Status'] || 'pending').toLowerCase();
+      if (status === 'fulfilled' || status === 'delivered') {
+        fulfillmentStatus = 'fulfilled';
+      } else if (status === 'processing' || status === 'shipped') {
+        fulfillmentStatus = 'partial';
+      }
+
       return {
         id: orderDoc.id,
         orderNumber: data['Order ID']?.toString() || data['Shopify Order Number']?.toString() || orderDoc.id,
         customerName: data['Customer Name'] || data['Clients name'] || 'N/A',
         customerEmail: data['Customer Email'] || '',
-        status: data['Status'] || 'pending',
+        status: (data['Status'] || 'pending') as any,
+        fulfillmentStatus,
+        items,
         totalAmount: parseFloat(data['Total'] || data['Subtotal'] || '0'),
         currency: data['Currency'] || 'USD',
         clientId: data['client_id'] || data['clientId'] || '',
+        shippingAddress: {
+          street: data['Shipping Address']?.street || data['Address']?.street || '',
+          city: data['Shipping Address']?.city || data['Address']?.city || '',
+          state: data['Shipping Address']?.state || data['Address']?.state || '',
+          zipCode: data['Shipping Address']?.zipCode || data['Address']?.zipCode || '',
+          country: data['Shipping Address']?.country || data['Address']?.country || 'US',
+        },
         createdAt: orderDate,
         updatedAt: orderDate,
-        lineItems: data['Line Items'] || '',
-        shipping: parseFloat(data['Shipping'] || '0'),
-        subtotal: parseFloat(data['Subtotal'] || '0'),
-      } as Order;
+      };
     }
     return null;
   } catch (error) {

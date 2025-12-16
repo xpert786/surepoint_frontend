@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Debug endpoint to check Firebase configuration
  * GET /api/debug/firebase-config
