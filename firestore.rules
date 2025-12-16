@@ -1,63 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection: users can create and manage their own document
+    // Users collection: Allow all authenticated users to read all users (for Users & Roles page)
     match /users/{userId} {
       // Allow create: user must be authenticated and creating their own document
       allow create: if request.auth != null && request.auth.uid == userId;
       
-      // Allow read: user can read their own document
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow read: any authenticated user can read all user documents
+      allow read: if request.auth != null;
       
-      // Allow update: user can update their own document
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Allow update: user can update their own document, or COO/Admin can update any
+      allow update: if request.auth != null && (
+        request.auth.uid == userId ||
+        // Try to check role, but don't fail if document doesn't exist
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'))
+      );
       
-      // Allow delete: user can delete their own document (optional)
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      // Allow delete: user can delete their own document, or COO/Admin can delete any
+      allow delete: if request.auth != null && (
+        request.auth.uid == userId ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'))
+      );
     }
     
-    // Orders: clients can only see their own, COO can see all
+    // Orders: Allow all authenticated users to read (for development)
     match /orders/{orderId} {
-      allow read: if request.auth != null && (
-        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
     
-    // KPIs: same rules as orders
+    // KPIs: Allow all authenticated users to read (for development)
     match /kpis/{kpiId} {
-      allow read: if request.auth != null && (
-        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
     
-    // Clients: only COO/admin can read
+    // Clients: Allow all authenticated users to read (for development)
     match /clients/{clientId} {
-      allow read: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-      allow write: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
     
-    // Inventory: same rules as orders
+    // Inventory: Allow all authenticated users to read (for development)
     match /inventory/{itemId} {
-      allow read: if request.auth != null && (
-        resource.data.clientId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'coo' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Testing collection: Allow all authenticated users to read (for development)
+    match /testing/{orderId} {
+      allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
   }
 }
-
-

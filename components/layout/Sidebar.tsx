@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -11,20 +12,19 @@ import {
   Users,
   TrendingUp,
   LogOut,
+  List,
+  FileText,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { BillingPortalButton } from '@/components/billing/BillingPortalButton';
-
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Orders', href: '/dashboard/orders', icon: Package },
-  { name: 'KPIs', href: '/dashboard/kpis', icon: BarChart3 },
-  { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
-];
-
-const cooNavigation = [
-  { name: 'COO Insights', href: '/dashboard/coo', icon: TrendingUp },
+  { name: 'Orders', href: '/dashboard/orders', icon: List },
   { name: 'Clients', href: '/dashboard/clients', icon: Users },
+  { name: "Analytics & KPI's", href: '/dashboard/kpis', icon: BarChart3 },
+  { name: 'Users & Roles', href: '/dashboard/users', icon: Users },
+  { name: 'Logs & Audits', href: '/dashboard/logs', icon: FileText },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings, hasDropdown: true },
 ];
 
 export function Sidebar() {
@@ -33,82 +33,45 @@ export function Sidebar() {
   const isCOO = userData?.role === 'coo' || userData?.role === 'admin';
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-gray-900 text-white">
-      <div className="flex h-16 items-center justify-center border-b border-gray-800">
-        <h1 className="text-xl font-bold">Surepoint</h1>
+    <div className="flex h-screen w-64 flex-col  text-white">
+      <div className="flex h-16 items-center justify-center border-b border-orange-600 px-4">
+        <Image src="/assets/logo.png" alt="Surepoint Logo" width={150} height={60} className="object-contain" />
       </div>
       
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto bg-[#E79138]">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          // For Dashboard, only match exactly. For other routes, match the path and sub-paths
+          const isActive = item.href === '/dashboard' 
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-white text-[#020F3F]'
+                  : 'text-white hover:bg-orange-200'
               )}
             >
-              <item.icon className="h-5 w-5" />
-              <span>{item.name}</span>
+              <div className="flex items-center space-x-3">
+                <item.icon className="h-5 w-5" />
+                <span>{item.name}</span>
+              </div>
+              {item.hasDropdown && <ChevronDown className="h-4 w-4" />}
             </Link>
           );
         })}
-        
-        {isCOO && (
-          <>
-            <div className="my-4 border-t border-gray-800"></div>
-            {cooNavigation.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </>
-        )}
       </nav>
 
-      <div className="border-t border-gray-800 p-4 space-y-3">
-        <div className="flex items-center space-x-3 px-3">
-          <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
-            <span className="text-sm font-medium">
-              {userData?.name?.charAt(0).toUpperCase() || 'U'}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{userData?.name || 'User'}</p>
-            <p className="text-xs text-gray-400 truncate">{userData?.email}</p>
-          </div>
-        </div>
-        
-        {/* Billing Portal Button */}
-        {userData?.billing?.status === 'active' && (
-          <div className="px-3">
-            <BillingPortalButton />
-          </div>
-        )}
-        
+      <div className="pb-4 p-4 bg-[#E79138]">
         <button
           onClick={logOut}
-          className="flex w-full items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          className="flex w-full items-center bg-[#FFFFFFB2] border-2 border-[#FFFFFF] space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-[#FF3D00] hover:bg-orange-200 hove:text-white transition-colors"
         >
           <LogOut className="h-5 w-5" />
-          <span>Sign Out</span>
+          <span>Logout</span>
         </button>
       </div>
     </div>

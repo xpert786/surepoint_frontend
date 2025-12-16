@@ -74,37 +74,75 @@ export default function IntegrationsPage() {
   };
 
   const handleCreateLink = async (type: 'shopify' | 'shipstation') => {
-    const email = type === 'shopify' ? integrationData.shopifyEmail : integrationData.shipstationEmail;
-    
-    if (!email.trim()) {
+    if (!user) {
       setErrors((prev) => ({
         ...prev,
-        [type === 'shopify' ? 'shopifyEmail' : 'shipstationEmail']: 'Please enter an email address first',
+        [type === 'shopify' ? 'shopifyEmail' : 'shipstationEmail']: 'You must be logged in to create a link',
       }));
       return;
     }
 
-    if (!validateEmail(email)) {
-      setErrors((prev) => ({
-        ...prev,
-        [type === 'shopify' ? 'shopifyEmail' : 'shipstationEmail']: 'Please enter a valid email address',
-      }));
-      return;
-    }
-
-    // Clear error
+    // Clear any existing errors
     setErrors((prev) => ({
       ...prev,
       [type === 'shopify' ? 'shopifyEmail' : 'shipstationEmail']: undefined,
     }));
 
-    // Generate a unique link (in production, this would call an API)
-    const link = `https://surepoint.app/integrate/${type}/${btoa(email.trim().toLowerCase())}`;
-    
-    if (type === 'shopify') {
-      handleChange('shopifyLink', link);
-    } else {
-      handleChange('shipstationLink', link);
+    setSaving(true);
+    setSaveError('');
+
+    try {
+      // Generate link based on type
+      let link: string;
+      
+      if (type === 'shopify') {
+        // Use Zapier webhook URL with user's document ID appended
+        link = `https://hooks.zapier.com/hooks/catch/25354839/uzslls1/?clientId=${user.uid}`;
+      } else {
+        // Use Zapier webhook URL for ShipStation with user's document ID appended
+        link = `https://hooks.zapier.com/hooks/catch/25354839/ukafwmt/?clientId=${user.uid}`;
+      }
+      
+      // Update state immediately
+      if (type === 'shopify') {
+        handleChange('shopifyLink', link);
+      } else {
+        handleChange('shipstationLink', link);
+      }
+
+      // Save to Firestore immediately
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc: any = userData as any;
+      
+      // Get existing onboardingInfo or create new structure
+      const existingOnboardingInfo = userDoc?.onboardingInfo || {};
+      
+      // Update integration data with new link (preserve existing email if any)
+      const updatedIntegrationData = {
+        shopifyEmail: integrationData.shopifyEmail.trim().toLowerCase() || '',
+        shopifyLink: type === 'shopify' ? link : (integrationData.shopifyLink || ''),
+        shipstationEmail: integrationData.shipstationEmail.trim().toLowerCase() || '',
+        shipstationLink: type === 'shipstation' ? link : (integrationData.shipstationLink || ''),
+      };
+      
+      await updateDoc(userRef, {
+        onboardingInfo: {
+          ...existingOnboardingInfo,
+          integrationsInfo: updatedIntegrationData,
+        },
+        updatedAt: serverTimestamp(),
+      });
+      
+      await refreshUserData();
+    } catch (err: any) {
+      console.error('Error creating and saving link:', err);
+      setSaveError(err.message || 'Failed to create link. Please try again.');
+      setErrors((prev) => ({
+        ...prev,
+        [type === 'shopify' ? 'shopifyEmail' : 'shipstationEmail']: 'Failed to save link. Please try again.',
+      }));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -209,46 +247,34 @@ export default function IntegrationsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={integrationData.shopifyEmail}
-                    onChange={(e) => handleChange('shopifyEmail', e.target.value)}
-                    className={`w-full rounded-md border px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                      errors.shopifyEmail ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="your-email@example.com"
-                  />
-                  {errors.shopifyEmail && (
-                    <p className="text-xs text-red-600 mt-1">{errors.shopifyEmail}</p>
-                  )}
-                </div>
-                <div className="flex items-end gap-2 pt-6">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCreateLink('shopify')}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    disabled={saving}
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    CREATE LINK
+                    {saving ? 'CREATING...' : 'CREATE LINK'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(integrationData.shopifyLink, 'shopify')}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                  >
-                    {shopifyCopied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        COPIED
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        COPY
-                      </>
-                    )}
-                  </button>
+                  {integrationData.shopifyLink && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(integrationData.shopifyLink, 'shopify')}
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                    >
+                      {shopifyCopied ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          COPIED
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          COPY
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -322,46 +348,34 @@ export default function IntegrationsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={integrationData.shipstationEmail}
-                    onChange={(e) => handleChange('shipstationEmail', e.target.value)}
-                    className={`w-full rounded-md border px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                      errors.shipstationEmail ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="your-email@example.com"
-                  />
-                  {errors.shipstationEmail && (
-                    <p className="text-xs text-red-600 mt-1">{errors.shipstationEmail}</p>
-                  )}
-                </div>
-                <div className="flex items-end gap-2 pt-6">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCreateLink('shipstation')}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    disabled={saving}
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    CREATE LINK
+                    {saving ? 'CREATING...' : 'CREATE LINK'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(integrationData.shipstationLink, 'shipstation')}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                  >
-                    {shipstationCopied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        COPIED
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        COPY
-                      </>
-                    )}
-                  </button>
+                  {integrationData.shipstationLink && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(integrationData.shipstationLink, 'shipstation')}
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                    >
+                      {shipstationCopied ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          COPIED
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          COPY
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

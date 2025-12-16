@@ -16,52 +16,121 @@ import { Order, UserRole } from '@/types';
 
 export async function getOrders(clientId?: string, userRole?: UserRole, limitCount: number = 50): Promise<Order[]> {
   try {
+    console.log('getOrders called with:', { clientId, userRole, limitCount });
+    
     let q;
-    if (userRole === 'coo' || userRole === 'admin' || userRole === 'client') {
-      // COO can see all orders - limit to reduce load time
-      q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(limitCount));
+    // Orders are stored in the 'testing' collection with 'client_id' field
+    if (userRole === 'coo' || userRole === 'admin') {
+      // COO and Admin can see all orders
+      console.log('Querying all orders (COO/Admin)');
+      q = query(collection(db, 'testing'), limit(limitCount));
     } else if (clientId) {
-      // Clients can only see their own orders
+      // Clients can only see their own orders - filter by client_id
+      console.log('Querying orders for clientId:', clientId);
       q = query(
-        collection(db, 'orders'),
-        where('clientId', '==', clientId),
-        orderBy('createdAt', 'desc'),
+        collection(db, 'testing'),
+        where('client_id', '==', clientId),
         limit(limitCount)
       );
     } else {
+      // No clientId and not COO/Admin - return empty
+      console.log('No clientId and not COO/Admin - returning empty');
       return [];
     }
 
+    console.log('Executing Firestore query...');
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => {
+    console.log(`Query returned ${querySnapshot.docs.length} documents`);
+    
+    const orders = querySnapshot.docs.map((doc) => {
       const data = doc.data();
-      return {
+      console.log('Processing order document:', doc.id, data);
+      
+      // Map Firestore fields to Order type
+      // Firestore has: Order ID, Customer Name, Order Date, Total, client_id, etc.
+      // Order type expects: orderNumber, customerName, createdAt, totalAmount, clientId, etc.
+      
+      // Parse Order Date if it's a string
+      let orderDate: Date;
+      if (data['Order Date']) {
+        if (typeof data['Order Date'] === 'string') {
+          orderDate = new Date(data['Order Date']);
+        } else if (data['Order Date'].toDate) {
+          orderDate = data['Order Date'].toDate();
+        } else {
+          orderDate = new Date();
+        }
+      } else {
+        orderDate = new Date();
+      }
+      
+      const order = {
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        shippedAt: data.shippedAt?.toDate(),
-        deliveredAt: data.deliveredAt?.toDate(),
+        orderNumber: data['Order ID']?.toString() || data['Shopify Order Number']?.toString() || doc.id,
+        customerName: data['Customer Name'] || data['Clients name'] || 'N/A',
+        customerEmail: data['Customer Email'] || '',
+        status: data['Status'] || 'pending',
+        totalAmount: parseFloat(data['Total'] || data['Subtotal'] || '0'),
+        currency: data['Currency'] || 'USD',
+        clientId: data['client_id'] || data['clientId'] || '',
+        createdAt: orderDate,
+        updatedAt: orderDate,
+        // Map other fields if they exist
+        lineItems: data['Line Items'] || '',
+        shipping: parseFloat(data['Shipping'] || '0'),
+        subtotal: parseFloat(data['Subtotal'] || '0'),
       } as Order;
+      
+      console.log('Mapped order:', order);
+      return order;
     });
+    
+    console.log(`Returning ${orders.length} orders`);
+    return orders;
   } catch (error) {
     console.error('Error fetching orders:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.code,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return [];
   }
 }
 
 export async function getOrderById(orderId: string): Promise<Order | null> {
   try {
-    const orderDoc = await getDoc(doc(db, 'orders', orderId));
+    // Orders are in the 'testing' collection
+    const orderDoc = await getDoc(doc(db, 'testing', orderId));
     if (orderDoc.exists()) {
       const data = orderDoc.data();
+      
+      // Parse Order Date if it's a string
+      let orderDate: Date;
+      if (data['Order Date']) {
+        if (typeof data['Order Date'] === 'string') {
+          orderDate = new Date(data['Order Date']);
+        } else {
+          orderDate = data['Order Date'].toDate();
+        }
+      } else {
+        orderDate = new Date();
+      }
+      
       return {
         id: orderDoc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
-        shippedAt: data.shippedAt?.toDate(),
-        deliveredAt: data.deliveredAt?.toDate(),
+        orderNumber: data['Order ID']?.toString() || data['Shopify Order Number']?.toString() || orderDoc.id,
+        customerName: data['Customer Name'] || data['Clients name'] || 'N/A',
+        customerEmail: data['Customer Email'] || '',
+        status: data['Status'] || 'pending',
+        totalAmount: parseFloat(data['Total'] || data['Subtotal'] || '0'),
+        currency: data['Currency'] || 'USD',
+        clientId: data['client_id'] || data['clientId'] || '',
+        createdAt: orderDate,
+        updatedAt: orderDate,
+        lineItems: data['Line Items'] || '',
+        shipping: parseFloat(data['Shipping'] || '0'),
+        subtotal: parseFloat(data['Subtotal'] || '0'),
       } as Order;
     }
     return null;
