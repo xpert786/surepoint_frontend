@@ -9,17 +9,6 @@ export function Header() {
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <Image 
-          src="/assets/logo.png" 
-          alt="Surepoint Logo" 
-          width={120} 
-          height={48} 
-          className="object-contain" 
-          style={{ width: 'auto', height: 'auto' }}
-          priority
-        />
-      </div>
       <div className="flex-1 max-w-md">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
