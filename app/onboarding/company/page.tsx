@@ -159,6 +159,7 @@ export default function CompanyOnboardingPage() {
       await refreshUserData();
       
       if (goToNextStep) {
+        // After company, go to team (optional step - user can skip)
         router.push('/onboarding/team');
       }
     } catch (err: any) {
@@ -341,24 +342,14 @@ export default function CompanyOnboardingPage() {
             >
               ← BACK
             </button>
-            <div className="flex items-center gap-4">
             <button
-                type="button"
-                disabled={saving}
-                onClick={() => handleSave(true)}
-                className="flex items-center gap-2 rounded-full bg-[#E79138] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              >
-                {saving ? 'Saving...' : 'SAVE & CONTINUE'} →
-              </button>
-              <button
-                type="button"
-                className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-                onClick={() => router.push('/dashboard')}
-              >
-                SKIP
-              </button>
-            
-            </div>
+              type="button"
+              disabled={saving}
+              onClick={() => handleSave(true)}
+              className="flex items-center gap-2 rounded-full bg-[#E79138] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {saving ? 'Saving...' : 'SAVE & CONTINUE'} →
+            </button>
           </div>
         </div>
       </div>

@@ -169,6 +169,12 @@ export default function IntegrationsPage() {
   const handleSave = async (goToNextStep: boolean) => {
     if (!user) return;
     
+    // Validate that at least one integration link is created
+    if (!integrationData.shopifyLink && !integrationData.shipstationLink) {
+      setSaveError('Please create at least one integration link (Shopify or ShipStation) before continuing.');
+      return;
+    }
+    
     setSaving(true);
     setSaveError('');
     
@@ -198,6 +204,7 @@ export default function IntegrationsPage() {
       await refreshUserData();
       
       if (goToNextStep) {
+        // After integrations (mandatory), go to review
         router.push('/onboarding/review');
       }
     } catch (err: any) {
@@ -440,28 +447,19 @@ export default function IntegrationsPage() {
           <div className="border-t border-gray-200 px-6 py-5 flex items-center justify-between bg-gray-50">
             <button
               type="button"
-              onClick={() => router.push('/onboarding/team')}
+              onClick={() => router.push('/onboarding/company')}
               className="flex items-center gap-2 rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               ← BACK
             </button>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => handleSave(true)}
-                className="flex items-center gap-2 rounded-full bg-[#E79138] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              >
-                {saving ? 'Saving...' : 'SAVE & CONTINUE'} →
-              </button>
-              <button
-                type="button"
-                className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-                onClick={() => router.push('/dashboard')}
-              >
-                SKIP
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={saving || (!integrationData.shopifyLink && !integrationData.shipstationLink)}
+              onClick={() => handleSave(true)}
+              className="flex items-center gap-2 rounded-full bg-[#E79138] px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {saving ? 'Saving...' : 'SAVE & CONTINUE'} →
+            </button>
           </div>
         </div>
       </div>

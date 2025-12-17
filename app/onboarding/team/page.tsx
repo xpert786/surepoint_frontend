@@ -237,9 +237,8 @@ export default function TeamSetupPage() {
       await refreshUserData();
       
       if (goToNextStep) {
+        // After team (optional), go to integrations (mandatory step)
         router.push('/onboarding/integrations');
-      } else {
-        router.push('/dashboard');
       }
     } catch (err: any) {
       console.error('Error saving team info:', err);
@@ -405,7 +404,7 @@ export default function TeamSetupPage() {
           <div className="border-t border-gray-200 px-6 py-5 flex items-center justify-between bg-gray-50">
             <button
               type="button"
-              onClick={() => router.push('/onboarding/company')}
+              onClick={() => router.push('/onboarding/integrations')}
               className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               ← BACK
@@ -422,7 +421,7 @@ export default function TeamSetupPage() {
               <button
                 type="button"
                 className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/onboarding/integrations')}
               >
                 SKIP
               </button>

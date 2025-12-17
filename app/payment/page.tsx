@@ -49,12 +49,37 @@ export default function PaymentPage() {
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login');
+      return;
     }
-    // If billing is already active, redirect to dashboard
+    // If billing is already active, check onboarding status
     if (!loading && userData) {
       const billingStatus = userData.billing?.status || userData.paymentStatus;
       if (billingStatus === 'active' || billingStatus === 'paid') {
-        router.push('/dashboard');
+        // Check if onboarding is complete
+        const onboardingInfo = (userData as any)?.onboardingInfo || {};
+        const companyInfo = onboardingInfo?.companyInfo || {};
+        const integrationsInfo = onboardingInfo?.integrationsInfo || {};
+        
+        const hasCompanyInfo = companyInfo.businessName && 
+                              companyInfo.businessType && 
+                              companyInfo.registeredAddress && 
+                              companyInfo.warehouseAddress &&
+                              companyInfo.timezone &&
+                              companyInfo.supportEmail;
+        
+        const hasIntegrationsInfo = integrationsInfo.shopifyLink || integrationsInfo.shipstationLink;
+        
+        // If onboarding is complete, go to dashboard, otherwise go to onboarding
+        if (hasCompanyInfo && hasIntegrationsInfo) {
+          router.push('/dashboard');
+        } else {
+          // Redirect to onboarding if not complete
+          if (!hasCompanyInfo) {
+            router.push('/onboarding/company');
+          } else if (!hasIntegrationsInfo) {
+            router.push('/onboarding/integrations');
+          }
+        }
       }
     }
   }, [user, userData, loading, router]);

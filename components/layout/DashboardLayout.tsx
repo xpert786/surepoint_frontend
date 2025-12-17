@@ -22,18 +22,41 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check billing status - redirect to payment if not active
-    // Only check if we have userData (might be null initially)
+    // Check payment status first, then onboarding completion
     if (userData) {
       const billingStatus = userData.billing?.status || userData.paymentStatus;
-      // Allow a small delay to prevent race conditions after payment
-      const checkBilling = setTimeout(() => {
-        if (billingStatus !== 'active' && billingStatus !== 'paid') {
-          router.push('/payment');
+      
+      // If payment is not active, redirect to payment page first
+      if (billingStatus !== 'active' && billingStatus !== 'paid') {
+        router.push('/payment');
+        return;
+      }
+      
+      // After payment is confirmed, check onboarding completion - Company and Integrations are mandatory
+      const onboardingInfo = (userData as any)?.onboardingInfo || {};
+      const companyInfo = onboardingInfo?.companyInfo || {};
+      const integrationsInfo = onboardingInfo?.integrationsInfo || {};
+      
+      // Check if mandatory onboarding steps are completed
+      const hasCompanyInfo = companyInfo.businessName && 
+                            companyInfo.businessType && 
+                            companyInfo.registeredAddress && 
+                            companyInfo.warehouseAddress &&
+                            companyInfo.timezone &&
+                            companyInfo.supportEmail;
+      
+      const hasIntegrationsInfo = integrationsInfo.shopifyLink || integrationsInfo.shipstationLink;
+      
+      // If mandatory steps are not completed, redirect to onboarding
+      if (!hasCompanyInfo || !hasIntegrationsInfo) {
+        // Determine which step to redirect to
+        if (!hasCompanyInfo) {
+          router.push('/onboarding/company');
+        } else if (!hasIntegrationsInfo) {
+          router.push('/onboarding/integrations');
         }
-      }, 500); // Small delay to allow userData to update after payment
-
-      return () => clearTimeout(checkBilling);
+        return;
+      }
     }
     // If userData is null but user exists, wait a bit for it to load
     // Don't redirect immediately as userData might still be loading

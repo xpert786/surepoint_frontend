@@ -35,12 +35,13 @@ export default function LoginPage() {
           return;
         }
         await signUp(email, password, name);
+        // After sign up, redirect to payment page first
+        router.push('/payment');
       } else {
         await signIn(email, password);
+        // After sign in, check payment/onboarding status and redirect accordingly
+        router.push('/dashboard');
       }
-      // Check payment status and redirect accordingly
-      // The AuthContext will handle the redirect based on payment status
-      router.push('/payment');
     } catch (err: unknown) {
       console.error('Authentication error:', err);
 
