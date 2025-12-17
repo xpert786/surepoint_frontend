@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  basePath: "/surepoint-frontend",
+  assetPrefix: "/surepoint-frontend",
   trailingSlash: true,
-  basePath: '/surepoint_frontend/surepoint_frontend',
-  assetPrefix: '/surepoint_frontend/surepoint_frontend',
   images: {
     unoptimized: true,
-    formats: ['image/webp'],
+    formats: ["image/webp"],
   },
 };
 
