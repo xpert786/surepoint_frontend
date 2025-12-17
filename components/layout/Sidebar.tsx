@@ -35,7 +35,7 @@ export function Sidebar() {
   return (
     <div className="flex h-screen w-64 flex-col  text-white">
       <div className="flex h-16 items-center justify-center border-b border-orange-600 px-4">
-        <Image src="/assets/logo.png" alt="Surepoint Logo" width={150} height={60} className="object-contain" />
+        <Image src="/assets/logo.png" alt="Surepoint Logo" width={150} height={60} className="object-contain" style={{ width: 'auto', height: 'auto' }} />
       </div>
       
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto bg-[#E79138]">

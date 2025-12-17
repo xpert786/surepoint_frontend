@@ -15,43 +15,122 @@ export const OrdersChart = memo(function OrdersChart({ orders }: OrdersChartProp
   // Memoize chart data calculation to prevent recalculation on every render
   const chartData = useMemo(() => {
     const now = new Date();
-    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
-    // Get last 7 days for weekly view
-    const weeklyData = daysOfWeek.map((day, index) => {
-      const date = new Date(now);
-      date.setDate(date.getDate() - (6 - index));
+    if (period === 'WEEKLY') {
+      // Get last 7 days (including today)
+      const weeklyData = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        
+        const dayOfWeek = daysOfWeek[date.getDay()];
+        
+        const dayOrders = orders.filter(order => {
+          const orderDate = order.createdAt instanceof Date 
+            ? order.createdAt 
+            : new Date(order.createdAt);
+          const orderDateOnly = new Date(orderDate);
+          orderDateOnly.setHours(0, 0, 0, 0);
+          return orderDateOnly.getTime() === date.getTime();
+        });
+        
+        const revenue = dayOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+        const orderCount = dayOrders.length;
+        
+        weeklyData.push({
+          day: dayOfWeek,
+          date: date.toISOString().split('T')[0],
+          revenue: revenue,
+          orders: orderCount
+        });
+      }
+      return weeklyData;
+    } else if (period === 'MONTHLY') {
+      // Get last 30 days, grouped by week
+      const monthlyData = [];
+      const weeks = [];
       
-      const dayOrders = orders.filter(order => {
-        const orderDate = order.createdAt instanceof Date 
-          ? order.createdAt 
-          : new Date(order.createdAt);
-        return orderDate.toDateString() === date.toDateString();
-      });
+      // Create 4-5 weeks of data
+      for (let weekIndex = 4; weekIndex >= 0; weekIndex--) {
+        const weekStart = new Date(now);
+        weekStart.setDate(weekStart.getDate() - (weekIndex * 7) - 6);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        
+        const weekOrders = orders.filter(order => {
+          const orderDate = order.createdAt instanceof Date 
+            ? order.createdAt 
+            : new Date(order.createdAt);
+          return orderDate >= weekStart && orderDate <= weekEnd;
+        });
+        
+        const revenue = weekOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+        const orderCount = weekOrders.length;
+        
+        const weekLabel = `Week ${5 - weekIndex}`;
+        monthlyData.push({
+          day: weekLabel,
+          date: `${weekStart.toISOString().split('T')[0]} - ${weekEnd.toISOString().split('T')[0]}`,
+          revenue: revenue,
+          orders: orderCount
+        });
+      }
+      return monthlyData;
+    } else if (period === 'YEARLY') {
+      // Get last 12 months
+      const yearlyData = [];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
-      const revenue = dayOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-      const orderCount = dayOrders.length;
-      
-      return {
-        day: day,
-        revenue: revenue,
-        orders: orderCount
-      };
-    });
-
-    return weeklyData;
-  }, [orders]);
+      for (let monthIndex = 11; monthIndex >= 0; monthIndex--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - monthIndex, 1);
+        monthStart.setHours(0, 0, 0, 0);
+        
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthIndex + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+        
+        const monthOrders = orders.filter(order => {
+          const orderDate = order.createdAt instanceof Date 
+            ? order.createdAt 
+            : new Date(order.createdAt);
+          return orderDate >= monthStart && orderDate <= monthEnd;
+        });
+        
+        const revenue = monthOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+        const orderCount = monthOrders.length;
+        
+        const monthLabel = `${monthNames[monthStart.getMonth()]} ${monthStart.getFullYear()}`;
+        yearlyData.push({
+          day: monthLabel,
+          date: `${monthStart.toISOString().split('T')[0]} - ${monthEnd.toISOString().split('T')[0]}`,
+          revenue: revenue,
+          orders: orderCount
+        });
+      }
+      return yearlyData;
+    }
+    
+    return [];
+  }, [orders, period]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-          <p className="font-medium text-gray-900">{payload[0].payload.day}</p>
-          {payload[0].payload.orders !== undefined && (
-            <p className="text-sm text-gray-600">Order's: {payload[0].payload.orders}</p>
+          <p className="font-medium text-gray-900">{data.day}</p>
+          {data.date && period !== 'WEEKLY' && (
+            <p className="text-xs text-gray-500 mb-1">{data.date}</p>
           )}
-          {payload[0].payload.revenue !== undefined && (
-            <p className="text-sm text-gray-600">Revenue "$": {payload[0].payload.revenue.toLocaleString()}</p>
+          {data.orders !== undefined && (
+            <p className="text-sm text-gray-600">Orders: {data.orders}</p>
+          )}
+          {data.revenue !== undefined && (
+            <p className="text-sm text-gray-600">Revenue: ${data.revenue.toLocaleString()}</p>
           )}
         </div>
       );

@@ -39,6 +39,12 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
+    // KPI collection (capital): Allow all authenticated users to read
+    match /KPI/{kpiId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
     // Clients: Allow all authenticated users to read (for development)
     match /clients/{clientId} {
       allow read: if request.auth != null;
@@ -53,6 +59,12 @@ service cloud.firestore {
     
     // Testing collection: Allow all authenticated users to read (for development)
     match /testing/{orderId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Logs collection: Allow all authenticated users to read
+    match /logs/{logId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }

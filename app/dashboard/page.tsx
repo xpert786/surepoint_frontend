@@ -6,15 +6,16 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { OrdersChart } from '@/components/dashboard/OrdersChart';
 import { RecentOrders } from '@/components/dashboard/RecentOrders';
 import { getOrders } from '@/lib/firebase/orders';
-import { getKPIs } from '@/lib/firebase/kpis';
+import { getKPIs, getKPISummary } from '@/lib/firebase/kpis';
 import { useAuth } from '@/contexts/AuthContext';
 import { Order, DashboardMetrics } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { Package, DollarSign } from 'lucide-react';
+import { Package, DollarSign, Clock, TrendingUp, AlertCircle } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { userData, loading: authLoading } = useAuth();
+  const { userData, user, loading: authLoading } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [kpiSummary, setKpiSummary] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -30,12 +31,22 @@ export default function DashboardPage() {
       setLoading(true);
       
       try {
-        // Fetch orders and KPIs in parallel for better performance
+        // Get clientId - use userData.clientId or fallback to user.uid
+        let clientId = userData.clientId;
+        if (!clientId && user?.uid) {
+          clientId = user.uid;
+        }
+        
+        // Fetch orders, KPIs, and KPI summary in parallel for better performance
         // Fetch more orders to calculate today/year metrics
-        const [orders, kpis] = await Promise.all([
-          getOrders(userData.clientId, userData.role, 1000),
-          getKPIs(userData.clientId, userData.role, 30)
+        const [orders, kpis, kpiSummaryData] = await Promise.all([
+          getOrders(clientId, userData.role, 1000),
+          getKPIs(clientId, userData.role, 30),
+          getKPISummary(clientId, userData.role)
         ]);
+        
+        console.log('KPI Summary data:', kpiSummaryData);
+        setKpiSummary(kpiSummaryData);
 
         // Calculate metrics efficiently
         const totalOrders = orders.length;
@@ -145,6 +156,8 @@ export default function DashboardPage() {
           </div>
         ) : metrics ? (
           <>
+           
+
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <MetricCard
