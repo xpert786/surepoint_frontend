@@ -79,6 +79,15 @@ export async function getOrders(clientId?: string, userRole?: UserRole, limitCou
         lineItems: data['Line Items'] || '',
         shipping: parseFloat(data['Shipping'] || '0'),
         subtotal: parseFloat(data['Subtotal'] || '0'),
+        fulfillmentStatus: data['Fulfillment Status'] || 'unfulfilled',
+        items: data['Line Items'] || [],
+        shippingAddress: {
+          street: data['Shipping Address']?.address1 || '',
+          city: data['Shipping Address']?.city || '',
+          state: data['Shipping Address']?.province || '',
+          zipCode: data['Shipping Address']?.zip || '',
+          country: data['Shipping Address']?.country || '',
+        },
       } as Order;
       
       console.log('Mapped order:', order);
@@ -131,6 +140,15 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
         lineItems: data['Line Items'] || '',
         shipping: parseFloat(data['Shipping'] || '0'),
         subtotal: parseFloat(data['Subtotal'] || '0'),
+        fulfillmentStatus: data['Fulfillment Status'] || 'unfulfilled',
+        items: data['Line Items'] || [],
+        shippingAddress: {
+          street: data['Shipping Address']?.address1 || '',
+          city: data['Shipping Address']?.city || '',
+          state: data['Shipping Address']?.province || '',
+          zipCode: data['Shipping Address']?.zip || '',
+          country: data['Shipping Address']?.country || '',
+        },
       } as Order;
     }
     return null;
