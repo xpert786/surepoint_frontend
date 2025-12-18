@@ -18,10 +18,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import logo from '../../public/assets/logo.png';
-const navigation = [
+
+const allNavigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Orders', href: '/dashboard/orders', icon: List },
-  { name: 'Clients', href: '/dashboard/clients', icon: Users },
+  { name: 'Clients', href: '/dashboard/clients', icon: Users, roles: ['COO'] },
   { name: "Analytics & KPI's", href: '/dashboard/kpis', icon: BarChart3 },
   { name: 'Users & Roles', href: '/dashboard/users', icon: Users },
   { name: 'Logs & Audits', href: '/dashboard/logs', icon: FileText },
@@ -31,7 +32,16 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { userData, logOut } = useAuth();
-  const isCOO = userData?.role === 'coo' || userData?.role === 'admin';
+  
+  // Filter navigation items based on user role
+  const navigation = allNavigationItems.filter((item) => {
+    // If item has roles restriction, check if user role matches
+    if (item.roles && userData?.role) {
+      return item.roles.includes(userData.role);
+    }
+    // If no roles restriction, show to everyone
+    return true;
+  });
 
   return (
     <div className="flex h-screen w-64 flex-col  text-white">
