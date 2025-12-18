@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, PLANS } from '@/lib/stripe/config';
+import { getStripe, PLANS } from '@/lib/stripe/config';
 
 /**
  * Create Stripe Checkout Session
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       sessionConfig.customer = stripeCustomerId;
     }
 
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return NextResponse.json({ 

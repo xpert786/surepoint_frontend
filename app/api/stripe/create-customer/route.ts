@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/config';
+import { getStripe } from '@/lib/stripe/config';
 
 /**
  * Create Stripe Customer when user signs up
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe Customer
+    const stripe = getStripe();
     const customer = await stripe.customers.create({
       email,
       name: name || email,

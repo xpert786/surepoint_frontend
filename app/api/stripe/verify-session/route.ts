@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/config';
+import { getStripe } from '@/lib/stripe/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     return NextResponse.json({

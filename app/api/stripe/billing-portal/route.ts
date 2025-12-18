@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/config';
+import { getStripe } from '@/lib/stripe/config';
 
 /**
  * Create Stripe Billing Portal Session
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create billing portal session
+    const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: `${request.nextUrl.origin}/dashboard`,

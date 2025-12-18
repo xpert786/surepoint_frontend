@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/config';
+import { getStripe } from '@/lib/stripe/config';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the session is actually paid
+    const stripe = getStripe();
     let session;
     try {
       session = await stripe.checkout.sessions.retrieve(sessionId);
