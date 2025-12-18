@@ -278,10 +278,7 @@ export default function LogsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Logs & Activity</h1>
             <p className="text-gray-600 mt-1">System events and audit trail.</p>
           </div>
-          <button className="bg-[#E79138] hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Export
-          </button>
+        
         </div>
 
         {/* Search and Filter */}

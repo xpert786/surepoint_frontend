@@ -3,22 +3,21 @@
 import { useEffect, useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { getClients } from '@/lib/firebase/clients';
-import { getOrders } from '@/lib/firebase/orders';
 import { useAuth } from '@/contexts/AuthContext';
-import { Client, Order } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { Client } from '@/types';
 import { Search, Plus, Mail, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
 
 interface ClientWithStats extends Client {
-  totalOrders: number;
-  totalSpent: number;
   contactPerson?: string;
+  companyName?: string;
+  businessType?: string;
+  registeredAddress?: string;
+  warehouseAddress?: string;
 }
 
 export default function ClientsPage() {
-  const { userData } = useAuth();
+  const { userData, loading: authLoading } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
-  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,39 +25,51 @@ export default function ClientsPage() {
 
   useEffect(() => {
     async function loadClients() {
-      if (!userData || (userData.role !== 'coo' && userData.role !== 'admin')) {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
+      // If no userData or user doesn't have required role, stop loading
+      if (!userData) {
+        setLoading(false);
+        return;
+      }
+      
+      const userRole = userData.role?.toLowerCase();
+      if (userRole !== 'coo' && userRole !== 'admin') {
+        setLoading(false);
         return;
       }
 
       try {
-        const [fetchedClients, fetchedOrders] = await Promise.all([
-          getClients(),
-          getOrders(undefined, userData.role, 1000),
-        ]);
+        console.log('🔄 Loading clients...');
+        console.log('👤 User role:', userRole);
+        console.log('👤 User ID:', userData.id);
+        console.log('🔐 User authenticated:', !!userData);
+        
+        const fetchedClients = await getClients();
+        console.log(`📊 Loaded ${fetchedClients.length} clients`);
+        console.log('📋 Clients array:', fetchedClients);
         setClients(fetchedClients);
-        setAllOrders(fetchedOrders);
-      } catch (error) {
-        console.error('Error loading clients:', error);
+      } catch (error: any) {
+        console.error('❌ Error loading clients:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          stack: error.stack,
+        });
       } finally {
         setLoading(false);
       }
     }
 
     loadClients();
-  }, [userData]);
+  }, [userData, authLoading]);
 
-  // Calculate stats for each client
+  // Add company info to each client
   const clientsWithStats = useMemo(() => {
     return clients.map((client) => {
-      const clientOrders = allOrders.filter(
-        (order) => order.clientId === client.id
-      );
-      const totalOrders = clientOrders.length;
-      const totalSpent = clientOrders.reduce(
-        (sum, order) => sum + order.totalAmount,
-        0
-      );
-
       // Extract contact person from email or use name
       const contactPerson = client.email
         ? client.email.split('@')[0].replace(/[._]/g, ' ')
@@ -66,13 +77,11 @@ export default function ClientsPage() {
 
       return {
         ...client,
-        totalOrders,
-        totalSpent,
         contactPerson:
           contactPerson.charAt(0).toUpperCase() + contactPerson.slice(1),
       } as ClientWithStats;
     });
-  }, [clients, allOrders]);
+  }, [clients]);
 
   // Filter clients based on search query
   const filteredClients = useMemo(() => {
@@ -117,7 +126,7 @@ export default function ClientsPage() {
     return pages;
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -130,7 +139,8 @@ export default function ClientsPage() {
     );
   }
 
-  if (userData?.role !== 'coo' && userData?.role !== 'admin') {
+  const userRole = userData?.role?.toLowerCase();
+  if (userRole !== 'coo' && userRole !== 'admin') {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
@@ -142,7 +152,7 @@ export default function ClientsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -151,10 +161,7 @@ export default function ClientsPage() {
               Manage your client accounts and relationships
             </p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium">
-            <Plus className="h-5 w-5" />
-            ADD CLIENT
-          </button>
+      
         </div>
 
         {/* Search Bar */}
@@ -168,14 +175,21 @@ export default function ClientsPage() {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E79138] focus:border-transparent"
           />
         </div>
+
+        
 
         {/* Client Cards Grid */}
         {paginatedClients.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No clients found</p>
+            {clients.length > 0 && (
+              <p className="text-sm text-gray-400 mt-2">
+                (Found {clients.length} clients but they may be filtered out)
+              </p>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -221,34 +235,20 @@ export default function ClientsPage() {
                       <span className="truncate">{client.address}</span>
                     </div>
                   )}
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-200 my-4"></div>
-
-                {/* Order Summary */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Total Orders</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {client.totalOrders}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Total Spent</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(client.totalSpent)}
-                    </p>
-                  </div>
+                  {client.subscriptionTier && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-gray-500">Plan:</span>
+                      <span className="font-medium text-gray-900 capitalize">
+                        {client.subscriptionTier}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium">
+             
+                  <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
                     <Trash2 className="h-4 w-4" />
                     Remove
                   </button>
@@ -273,7 +273,7 @@ export default function ClientsPage() {
                 className={`px-3 py-1 rounded ${
                   typeof page === 'number'
                     ? currentPage === page
-                      ? 'bg-orange-500 text-white'
+                      ? 'bg-[#E79138] text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                     : 'text-gray-400 cursor-default'
                 } transition-colors`}
