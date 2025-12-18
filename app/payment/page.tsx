@@ -106,7 +106,7 @@ export default function PaymentPage() {
     setError('');
 
     try {
-      const response = await fetch('/surepoint-frontend/api/stripe/create-checkout', {
+      const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
