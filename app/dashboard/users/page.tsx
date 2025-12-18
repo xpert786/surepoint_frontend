@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Search, Eye, Edit, Trash2, Plus, X, ChevronDown } from 'lucide-react';
-import { collection, getDocs, query, orderBy, doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { User } from '@/types';
 
@@ -19,7 +19,7 @@ interface TeamMember {
 }
 
 export default function UsersPage() {
-  const { userData, user } = useAuth();
+  const { userData, user, refreshUserData } = useAuth();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,94 +37,41 @@ export default function UsersPage() {
 
   useEffect(() => {
     async function loadUsers() {
+      if (!user || !userData) {
+        setLoading(false);
+        return;
+      }
+  
       try {
-        console.log('Loading team members from users collection...');
-        
-        // Fetch all users from Firestore
-        const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(usersQuery);
-        
-        console.log(`Found ${querySnapshot.docs.length} user documents`);
-        
-        const members: TeamMember[] = [];
-        
-        // Extract team members from each user's teamInfo.members array
-        querySnapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          console.log(`Processing user ${doc.id}:`, {
-            name: data.name,
-            email: data.email,
-            hasOnboardingInfo: !!data.onboardingInfo,
-            hasTeamInfo: !!data.onboardingInfo?.teamInfo,
-            hasMembers: !!data.onboardingInfo?.teamInfo?.members,
-            membersCount: data.onboardingInfo?.teamInfo?.members?.length || 0,
-          });
-          
-          const teamInfo = data.onboardingInfo?.teamInfo;
-          
-          // If user has team members, add them to the list
-          if (teamInfo?.members && Array.isArray(teamInfo.members)) {
-            console.log(`Found ${teamInfo.members.length} team members for user ${doc.id}`);
-            teamInfo.members.forEach((member: any, index: number) => {
-              console.log(`Adding team member ${index}:`, member);
-              members.push({
-                id: `${doc.id}-${index}`, // Unique ID combining user doc ID and member index
-                name: member.name || 'N/A',
-                email: member.email || 'N/A',
-                role: member.role || 'Admin',
-                department: getDepartmentFromRole(member.role || 'operator'),
-                status: 'active', // Default to active for team members
-                lastActive: data.updatedAt?.toDate() || null,
-              });
-            });
-          }
-          
-          // Also add the main user as a team member if they have a name and email
-          if (data.name && data.email) {
-            console.log(`Adding main user as team member:`, { 
-              name: data.name, 
-              email: data.email, 
-              role: data.role,
-              fullData: data 
-            });
-            
-            // Use the actual role from database, but map client to Admin
-            const actualRole = data.role || 'client';
-            const displayRole = getRoleDisplay(actualRole);
-            
-            members.push({
-              id: doc.id,
-              name: data.name,
-              email: data.email,
-              role: displayRole, // Show actual role (Admin, COO, CEO, etc.)
-              department: data.department || getDepartmentFromRole(actualRole),
-              status: data.status || (data.billing?.status === 'active' ? 'active' : 'inactive'),
-              lastActive: data.lastActive?.toDate() || data.updatedAt?.toDate() || null,
-            });
-          }
-        });
-        
-        console.log(`Total team members found: ${members.length}`, members);
-        setTeamMembers(members);
-      } catch (error: any) {
-        console.error('Error loading users:', error);
-        console.error('Error details:', {
-          message: error.message,
-          code: error.code,
-          stack: error.stack,
-        });
-        
-        // Check if it's a permissions error
-        if (error.code === 'permission-denied') {
-          console.error('Permission denied! Check Firestore security rules for users collection.');
+        const teamInfo = (userData as any)?.onboardingInfo?.teamInfo;
+  
+        if (teamInfo?.members && Array.isArray(teamInfo.members)) {
+          const members: TeamMember[] = teamInfo.members.map(
+            (member: any, index: number) => ({
+              id: `${user.uid}-${index}`,
+              name: member.name || 'N/A',
+              email: member.email || 'N/A',
+              role: member.role || 'Admin',
+              department: getDepartmentFromRole(member.role || 'operator'),
+              status: 'active',
+              lastActive:
+                (userData as any)?.updatedAt?.toDate?.() || null,
+            })
+          );
+  
+          setTeamMembers(members); // ✅ set ONCE
+        } else {
+          setTeamMembers([]);
         }
+      } catch (error) {
+        console.error('Error loading team members:', error);
       } finally {
         setLoading(false);
       }
     }
-
+  
     loadUsers();
-  }, []);
+  }, [user, userData]);
 
   const getDepartmentFromRole = (role: string): string => {
     const roleMap: Record<string, string> = {
@@ -176,10 +123,11 @@ export default function UsersPage() {
     if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
   };
-
+  console.log('teamMembers', teamMembers);
   const filteredMembers = teamMembers.filter((member) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
+    console.log('query', query);
     return (
       member.name.toLowerCase().includes(query) ||
       member.email.toLowerCase().includes(query) ||
@@ -187,6 +135,8 @@ export default function UsersPage() {
       member.department.toLowerCase().includes(query)
     );
   });
+
+  console.log('filteredMembers', filteredMembers);
 
   const totalPages = Math.ceil(filteredMembers.length / itemsPerPage);
   const paginatedMembers = filteredMembers.slice(
@@ -230,7 +180,7 @@ export default function UsersPage() {
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="bg-[#E79138] hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+            className="bg-[#E79138] hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             ADD USER
@@ -412,6 +362,8 @@ export default function UsersPage() {
                     updatedAt: serverTimestamp(),
                   });
 
+                  console.log('Team member added successfully:', newMember);
+
                   // Close modal and reset form
                   setShowAddModal(false);
                   setFormData({
@@ -422,8 +374,13 @@ export default function UsersPage() {
                     sendEmail: false,
                   });
 
-                  // Reload users to refresh the list
-                  window.location.reload();
+                  // Wait a moment for Firestore to propagate the update
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  
+                  // Refresh user data to get the updated team members
+                  await refreshUserData();
+                  
+                  console.log('User data refreshed, team members should now be visible');
                 } catch (error: any) {
                   console.error('Error adding team member:', error);
                   alert('Failed to add team member: ' + (error.message || 'Unknown error'));
