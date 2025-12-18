@@ -128,9 +128,7 @@ export default function OrdersPage() {
             <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
             <p className="text-gray-600 mt-1 text-sm">Manage and track all orders</p>
           </div>
-          <button className="bg-[#E79138] border-2 border-[#FFFFFF] text-white hover:bg-orange-200 hove:text-white font-semibold px-6 py-2.5 rounded-lg transition-colors">
-            + CREATE ORDER
-          </button>
+    
         </div>
 
         {/* Search and Filters */}
@@ -158,10 +156,7 @@ export default function OrdersPage() {
             <Filter className="h-4 w-4" />
             Filter's
           </button>
-          <button className="flex items-center gap-2 border border-[#BFC1C3] rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
-            <Upload className="h-4 w-4" />
-            Export
-          </button>
+      
         </div>
 
         {/* Orders Table */}

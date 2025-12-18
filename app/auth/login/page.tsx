@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,8 +18,33 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, userData, loading: authLoading, refreshUserData } = useAuth();
   const router = useRouter();
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
+
+  // Handle redirect after login based on billing status
+  useEffect(() => {
+    if (justLoggedIn && userData && !authLoading) {
+      const userRole = userData.role?.toLowerCase();
+      const isAdminOrCOO = userRole === 'admin' || userRole === 'coo';
+      
+      // Skip billing check for admin/COO roles
+      if (!isAdminOrCOO) {
+        const billingStatus = userData.billing?.status || userData.paymentStatus;
+        
+        // If payment is not active/paid, redirect to payment page
+        if (billingStatus !== 'active' && billingStatus !== 'paid') {
+          router.push('/payment');
+          setJustLoggedIn(false);
+          return;
+        }
+      }
+      
+      // If billing is paid or user is admin/COO, redirect to dashboard
+      router.push('/dashboard');
+      setJustLoggedIn(false);
+    }
+  }, [userData, justLoggedIn, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +64,11 @@ export default function LoginPage() {
         router.push('/payment');
       } else {
         await signIn(email, password);
-        // After sign in, check payment/onboarding status and redirect accordingly
-        router.push('/dashboard');
+        // Refresh userData after sign in
+        await refreshUserData();
+        // Set flag to trigger redirect check in useEffect
+        setJustLoggedIn(true);
+        // The useEffect will handle the redirect based on billing status
       }
     } catch (err: unknown) {
       console.error('Authentication error:', err);

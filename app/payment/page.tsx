@@ -51,8 +51,17 @@ export default function PaymentPage() {
       router.push('/auth/login');
       return;
     }
-    // If billing is already active, check onboarding status
+    // Skip payment page for admin and COO roles - redirect to dashboard
     if (!loading && userData) {
+      const userRole = userData.role;
+      const isAdminOrCOO = userRole === 'admin' || userRole === 'coo';
+      
+      if (isAdminOrCOO) {
+        router.push('/dashboard');
+        return;
+      }
+      
+      // If billing is already active, check onboarding status
       const billingStatus = userData.billing?.status || userData.paymentStatus;
       if (billingStatus === 'active' || billingStatus === 'paid') {
         // Check if onboarding is complete

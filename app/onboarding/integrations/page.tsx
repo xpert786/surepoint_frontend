@@ -97,10 +97,10 @@ export default function IntegrationsPage() {
       
       if (type === 'shopify') {
         // Use Zapier webhook URL with user's document ID appended
-        link = `https://hooks.zapier.com/hooks/catch/25354839/uzslls1/?clientId=${user.uid}`;
+        link = `https://hooks.zapier.com/hooks/catch/25354839/uamefk7/?clientId=${user.uid}`;
       } else {
         // Use Zapier webhook URL for ShipStation with user's document ID appended
-        link = `https://hooks.zapier.com/hooks/catch/25354839/ukafwmt/?clientId=${user.uid}`;
+        link = `https://hooks.zapier.com/hooks/catch/25354839/uame345/?clientId=${user.uid}`;
       }
       
       // Update state immediately

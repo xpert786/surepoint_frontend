@@ -4,11 +4,13 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // Wait for loading to complete
@@ -19,17 +21,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     // If not authenticated, redirect to login
     if (!user) {
       router.push('/auth/login');
+      setIsRedirecting(true);
       return;
     }
 
     // Check payment status first, then onboarding completion
     if (userData) {
-      const billingStatus = userData.billing?.status || userData.paymentStatus;
+      // Skip billing checks for admin and COO roles (case-insensitive)
+      const userRole = userData.role?.toLowerCase();
+      const isAdminOrCOO = userRole === 'admin' || userRole === 'coo';
       
-      // If payment is not active, redirect to payment page first
-      if (billingStatus !== 'active' && billingStatus !== 'paid') {
-        router.push('/payment');
-        return;
+      if (!isAdminOrCOO) {
+        const billingStatus = userData.billing?.status || userData.paymentStatus;
+        
+        // If payment is not active, redirect to payment page first
+        if (billingStatus !== 'active' && billingStatus !== 'paid') {
+          setIsRedirecting(true);
+          router.push('/payment');
+          return;
+        }
       }
       
       // After payment is confirmed, check onboarding completion - Company and Integrations are mandatory
@@ -49,6 +59,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       
       // If mandatory steps are not completed, redirect to onboarding
       if (!hasCompanyInfo || !hasIntegrationsInfo) {
+        setIsRedirecting(true);
         // Determine which step to redirect to
         if (!hasCompanyInfo) {
           router.push('/onboarding/company');
@@ -62,7 +73,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     // Don't redirect immediately as userData might still be loading
   }, [user, userData, loading, router]);
 
-  if (loading) {
+  if (loading || isRedirecting) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
