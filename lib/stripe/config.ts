@@ -3,32 +3,44 @@ import Stripe from 'stripe';
 // Lazy initialization to avoid build-time errors when env vars are not set
 let stripeInstance: Stripe | null = null;
 
+// Check if we're in build mode (Vercel sets NEXT_PHASE during build)
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
 export function getStripe(): Stripe {
   if (!stripeInstance) {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    
+    // During build time, if env var is missing, return a proxy that fails gracefully
+    // This allows the build to complete without errors
+    if (!secretKey) {
+      if (isBuildTime) {
+        // Return a proxy that will throw a helpful error when actually used at runtime
+        // This proxy handles all Stripe API calls (checkout.sessions, billingPortal.sessions, etc.)
+        const createErrorProxy = (): any => {
+          return new Proxy({} as any, {
+            get() {
+              return createErrorProxy();
+            },
+            apply() {
+              throw new Error(
+                'STRIPE_SECRET_KEY is not set in environment variables. ' +
+                'Please add STRIPE_SECRET_KEY to your Vercel project settings under Environment Variables.'
+              );
+            },
+          });
+        };
+        return createErrorProxy() as Stripe;
+      }
       throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
     }
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    
+    stripeInstance = new Stripe(secretKey, {
       apiVersion: '2025-10-29.clover',
       typescript: true,
     });
   }
   return stripeInstance;
 }
-
-// Export for backward compatibility (lazy getter via proxy)
-// This allows the module to load without throwing during build
-export const stripe = new Proxy({} as Stripe, {
-  get(_target, prop) {
-    const instance = getStripe();
-    const value = instance[prop as keyof Stripe];
-    // If it's a function or object, bind it properly
-    if (typeof value === 'function') {
-      return value.bind(instance);
-    }
-    return value;
-  },
-});
 
 export const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
