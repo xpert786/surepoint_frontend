@@ -32,12 +32,12 @@ const allNavigationItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { userData, logOut } = useAuth();
-  
   // Filter navigation items based on user role
   const navigation = allNavigationItems.filter((item) => {
-    // If item has roles restriction, check if user role matches
+    // If item has roles restriction, check if user role matches (case-insensitive)
     if (item.roles && userData?.role) {
-      return item.roles.includes(userData.role);
+      const userRoleLower = userData.role.toLowerCase();
+      return item.roles.some(role => role.toLowerCase() === userRoleLower);
     }
     // If no roles restriction, show to everyone
     return true;
