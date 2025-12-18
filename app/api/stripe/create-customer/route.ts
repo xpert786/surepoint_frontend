@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/config';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Create Stripe Customer when user signs up
  * This should be called after user creation in Firebase Auth

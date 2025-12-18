@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe, PLANS } from '@/lib/stripe/config';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Create Stripe Checkout Session
  * Frontend calls this → Returns Checkout URL → Redirect user

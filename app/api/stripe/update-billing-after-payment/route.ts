@@ -3,6 +3,8 @@ import { getStripe } from '@/lib/stripe/config';
 import { getAdminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Client-accessible route to update billing after payment
  * Called from payment success page when webhook hasn't processed yet

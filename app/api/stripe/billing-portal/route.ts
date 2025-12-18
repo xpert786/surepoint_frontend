@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/config';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Create Stripe Billing Portal Session
  * Allows users to manage their subscription, payment methods, etc.

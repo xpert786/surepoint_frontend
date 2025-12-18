@@ -1,43 +1,76 @@
-import Stripe from 'stripe';
-
-// Lazy initialization to avoid build-time errors when env vars are not set
-let stripeInstance: Stripe | null = null;
+// Conditional import to avoid evaluating Stripe module during build
+// We'll use require() inside the function for runtime initialization
+let StripeClass: any = null;
+let stripeInstance: any = null;
 
 // Check if we're in build mode (Vercel sets NEXT_PHASE during build)
-const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+// Also check for other build indicators
+const isBuildTime = 
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
 
-export function getStripe(): Stripe {
+// Create a reusable error proxy factory
+function createErrorProxy(): any {
+  const errorMessage = 
+    'STRIPE_SECRET_KEY is not set in environment variables. ' +
+    'Please add STRIPE_SECRET_KEY to your Vercel project settings under Environment Variables.';
+  
+  return new Proxy({} as any, {
+    get(_target, prop) {
+      // Return another proxy for nested access (e.g., checkout.sessions.create)
+      return createErrorProxy();
+    },
+    apply(_target, _thisArg, _args) {
+      throw new Error(errorMessage);
+    },
+  });
+}
+
+function loadStripe() {
+  if (!StripeClass) {
+    // Use require for conditional loading - only loads at runtime
+    // Wrap in try-catch to handle any module loading issues
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const stripeModule = require('stripe');
+      StripeClass = stripeModule.default || stripeModule;
+    } catch (error) {
+      // If stripe module can't be loaded, return null
+      // This will be handled in getStripe
+      return null;
+    }
+  }
+  return StripeClass;
+}
+
+export function getStripe(): any {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  
+  // During build time, if env var is missing, return a proxy that fails gracefully
+  // This allows the build to complete without errors
+  if (!secretKey && isBuildTime) {
+    return createErrorProxy();
+  }
+
+  // At runtime, initialize Stripe instance
   if (!stripeInstance) {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    
-    // During build time, if env var is missing, return a proxy that fails gracefully
-    // This allows the build to complete without errors
     if (!secretKey) {
-      if (isBuildTime) {
-        // Return a proxy that will throw a helpful error when actually used at runtime
-        // This proxy handles all Stripe API calls (checkout.sessions, billingPortal.sessions, etc.)
-        const createErrorProxy = (): any => {
-          return new Proxy({} as any, {
-            get() {
-              return createErrorProxy();
-            },
-            apply() {
-              throw new Error(
-                'STRIPE_SECRET_KEY is not set in environment variables. ' +
-                'Please add STRIPE_SECRET_KEY to your Vercel project settings under Environment Variables.'
-              );
-            },
-          });
-        };
-        return createErrorProxy() as Stripe;
-      }
       throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
     }
     
-    stripeInstance = new Stripe(secretKey, {
-      apiVersion: '2025-10-29.clover',
-      typescript: true,
-    });
+    const Stripe = loadStripe();
+    if (!Stripe) {
+      throw new Error('Failed to load Stripe module. Please ensure stripe package is installed.');
+    }
+    
+    try {
+      stripeInstance = new Stripe(secretKey, {
+        apiVersion: '2025-10-29.clover',
+        typescript: true,
+      });
+    } catch (error: any) {
+      throw new Error(`Failed to initialize Stripe: ${error.message}`);
+    }
   }
   return stripeInstance;
 }
