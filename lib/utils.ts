@@ -32,3 +32,18 @@ export function formatDateTime(date: Date | string): string {
   }).format(d);
 }
 
+/**
+ * Get API URL with base path
+ * Automatically includes /surepoint-frontend base path
+ * Works in both client and server components
+ */
+export function getApiUrl(path: string): string {
+  const basePath = '/surepoint-frontend';
+  
+  // Ensure path starts with /
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // Combine base path with API path
+  return `${basePath}${cleanPath}`;
+}
+

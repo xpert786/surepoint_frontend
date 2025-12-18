@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { getApiUrl } from '@/lib/utils';
 // Client-side plans (matches server-side config)
 const PLANS = {
   basic: {
@@ -106,7 +107,7 @@ export default function PaymentPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/stripe/create-checkout', {
+      const response = await fetch(getApiUrl('/api/stripe/create-checkout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

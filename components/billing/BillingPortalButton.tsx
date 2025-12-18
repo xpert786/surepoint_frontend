@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { CreditCard } from 'lucide-react';
+import { getApiUrl } from '@/lib/utils';
 
 export function BillingPortalButton() {
   const { user, userData } = useAuth();
@@ -26,7 +27,7 @@ export function BillingPortalButton() {
     setError('');
 
     try {
-      const response = await fetch('/api/stripe/billing-portal', {
+      const response = await fetch(getApiUrl('/api/stripe/billing-portal'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

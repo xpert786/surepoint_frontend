@@ -139,7 +139,8 @@ export async function signUp(
     // This runs on client side, so we can use window.location.origin
     if (typeof window !== 'undefined') {
       try {
-        const response = await fetch(`${window.location.origin}/api/stripe/create-customer`, {
+        const { getApiUrl } = await import('@/lib/utils');
+        const response = await fetch(getApiUrl('/api/stripe/create-customer'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
