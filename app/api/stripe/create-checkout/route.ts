@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${request.nextUrl.origin}/surepoint-frontend/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/surepoint-frontend/payment`,
+      success_url: `https://demosurepoint.unicornaaps.com/surepoint-frontend/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://demosurepoint.unicornaaps.com/surepoint-frontend/payment`,
       metadata: {
         userId: userId, // Firebase user ID
         firebaseUserId: userId, // Backup field
