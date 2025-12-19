@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         // Update user billing status via internal API route
         try {
           const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-          const updateUrl = `${request.nextUrl.origin}/api/internal/update-user-billing`;
+          const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
           
           console.log('📤 Calling update API:', updateUrl);
           console.log('📤 With userId:', userId);
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
           
           try {
             const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            const updateUrl = `${request.nextUrl.origin}/api/internal/update-user-billing`;
+            const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
             
             const updateResponse = await fetch(updateUrl, {
               method: 'POST',
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
           
           try {
             const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            const updateUrl = `${request.nextUrl.origin}/api/internal/update-user-billing`;
+            const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
             
             const updateResponse = await fetch(updateUrl, {
               method: 'POST',
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
         if (userId) {
           try {
             const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            await fetch(`${request.nextUrl.origin}/api/internal/update-user-billing`, {
+            await fetch(`${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
         if (userId) {
           try {
             const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            await fetch(`${request.nextUrl.origin}/api/internal/update-user-billing`, {
+            await fetch(`${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
