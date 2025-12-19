@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         // Update user billing status via internal API route
         try {
           const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-          const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
+          const updateUrl = `https://demosurepoint.unicornaaps.com/surepoint-frontend/api/internal/update-user-billing`;
           
           console.log('📤 Calling update API:', updateUrl);
           console.log('📤 With userId:', userId);
