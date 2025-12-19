@@ -96,45 +96,24 @@ export async function POST(request: NextRequest) {
           break;
         }
         
-        // Update user billing status via internal API route
+        // Update user billing status directly (no external HTTP call)
         try {
-          const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-          const updateUrl = `https://demosurepoint.unicornaaps.com/surepoint-frontend/api/internal/update-user-billing`;
+          const { updateUserBilling } = await import('@/lib/firebase/billing-update');
           
-          console.log('📤 Calling update API:', updateUrl);
-          console.log('📤 With userId:', userId);
+          console.log('📤 Updating user billing directly for userId:', userId);
           
-          const updateResponse = await fetch(updateUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${internalSecret}`,
-            },
-            body: JSON.stringify({
-              userId,
-              updates: {
-                'billing.status': 'active',
-                'billing.plan': plan,
-                'billing.paymentDate': new Date().toISOString(),
-                'billing.stripeCustomerId': session.customer,
-                'billing.stripeSessionId': session.id,
-                paymentStatus: 'paid',
-                subscriptionTier: plan,
-                paymentDate: new Date().toISOString(),
-                stripeCustomerId: session.customer,
-              },
-            }),
+          const updateData = await updateUserBilling(userId, {
+            'billing.status': 'active',
+            'billing.plan': plan,
+            'billing.paymentDate': new Date().toISOString(),
+            'billing.stripeCustomerId': session.customer,
+            'billing.stripeSessionId': session.id,
+            paymentStatus: 'paid',
+            subscriptionTier: plan,
+            paymentDate: new Date().toISOString(),
+            stripeCustomerId: session.customer,
           });
 
-          console.log('📥 Update response status:', updateResponse.status);
-
-          if (!updateResponse.ok) {
-            const errorData = await updateResponse.json();
-            console.error('❌ Failed to update user billing:', errorData);
-            throw new Error(`Failed to update user: ${errorData.error}`);
-          }
-
-          const updateData = await updateResponse.json();
           console.log('✅ User billing updated successfully:', updateData);
         } catch (updateError: any) {
           console.error('❌ Error updating user billing in webhook:', updateError);
@@ -181,34 +160,17 @@ export async function POST(request: NextRequest) {
           console.log('✅ Processing charge.succeeded for user:', userId);
           
           try {
-            const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
+            const { updateUserBilling } = await import('@/lib/firebase/billing-update');
             
-            const updateResponse = await fetch(updateUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${internalSecret}`,
-              },
-              body: JSON.stringify({
-                userId,
-                updates: {
-                  'billing.status': 'active',
-                  'billing.plan': plan,
-                  paymentStatus: 'paid',
-                  subscriptionTier: plan,
-                  stripeCustomerId: charge.customer,
-                },
-              }),
+            const updateData = await updateUserBilling(userId, {
+              'billing.status': 'active',
+              'billing.plan': plan,
+              paymentStatus: 'paid',
+              subscriptionTier: plan,
+              stripeCustomerId: charge.customer,
             });
 
-            if (updateResponse.ok) {  
-              const updateData = await updateResponse.json();
-              console.log('✅ User billing updated from charge:', updateData);
-            } else {
-              const errorData = await updateResponse.json();
-              console.error('❌ Failed to update from charge:', errorData);
-            }
+            console.log('✅ User billing updated from charge:', updateData);
           } catch (error) {
             console.error('❌ Error updating from charge:', error);
           }
@@ -256,34 +218,17 @@ export async function POST(request: NextRequest) {
           console.log('✅ Processing payment_intent.succeeded for user:', userId);
           
           try {
-            const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            const updateUrl = `${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`;
+            const { updateUserBilling } = await import('@/lib/firebase/billing-update');
             
-            const updateResponse = await fetch(updateUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${internalSecret}`,
-              },
-              body: JSON.stringify({
-                userId,
-                updates: {
-                  'billing.status': 'active',
-                  'billing.plan': plan,
-                  paymentStatus: 'paid',
-                  subscriptionTier: plan,
-                  stripeCustomerId: paymentIntent.customer,
-                },
-              }),
+            const updateData = await updateUserBilling(userId, {
+              'billing.status': 'active',
+              'billing.plan': plan,
+              paymentStatus: 'paid',
+              subscriptionTier: plan,
+              stripeCustomerId: paymentIntent.customer,
             });
 
-            if (updateResponse.ok) {
-              const updateData = await updateResponse.json();
-              console.log('✅ User billing updated from payment_intent:', updateData);
-            } else {
-              const errorData = await updateResponse.json();
-              console.error('❌ Failed to update from payment_intent:', errorData);
-            }
+            console.log('✅ User billing updated from payment_intent:', updateData);
           } catch (error) {
             console.error('❌ Error updating from payment_intent:', error);
           }
@@ -301,20 +246,10 @@ export async function POST(request: NextRequest) {
 
         if (userId) {
           try {
-            const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            await fetch(`${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${internalSecret}`,
-              },
-              body: JSON.stringify({
-                userId,
-                updates: {
-                  'billing.status': 'failed',
-                  paymentStatus: 'failed',
-                },
-              }),
+            const { updateUserBilling } = await import('@/lib/firebase/billing-update');
+            await updateUserBilling(userId, {
+              'billing.status': 'failed',
+              paymentStatus: 'failed',
             });
           } catch (error) {
             console.error('Error updating failed payment status:', error);
@@ -333,21 +268,11 @@ export async function POST(request: NextRequest) {
         const userId = subscription.metadata?.firebaseUserId;
         if (userId) {
           try {
-            const internalSecret = process.env.INTERNAL_API_SECRET || 'your-secret-key-change-in-production';
-            await fetch(`${request.nextUrl.origin}/surepoint-frontend/api/internal/update-user-billing`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${internalSecret}`,
-              },
-              body: JSON.stringify({
-                userId,
-                updates: {
-                  'billing.status': 'cancelled',
-                  'billing.plan': null,
-                  paymentStatus: 'cancelled',
-                },
-              }),
+            const { updateUserBilling } = await import('@/lib/firebase/billing-update');
+            await updateUserBilling(userId, {
+              'billing.status': 'cancelled',
+              'billing.plan': null,
+              paymentStatus: 'cancelled',
             });
           } catch (error) {
             console.error('Error updating cancelled subscription:', error);

@@ -23,23 +23,47 @@ function initializeAdmin(): Firestore {
       let serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
       
       if (serviceAccount) {
-        // Remove surrounding quotes if present
-        serviceAccount = serviceAccount.trim();
-        if ((serviceAccount.startsWith('"') && serviceAccount.endsWith('"')) ||
-            (serviceAccount.startsWith("'") && serviceAccount.endsWith("'"))) {
-          serviceAccount = serviceAccount.slice(1, -1);
-        }
-        
-        // Remove escaped newlines and quotes
-        serviceAccount = serviceAccount.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-        serviceAccount = serviceAccount.trim();
-        
         try {
-          serviceAccountJson = JSON.parse(serviceAccount);
-          console.log('📝 Using FIREBASE_SERVICE_ACCOUNT JSON string from environment variable');
+          // Remove surrounding quotes if present (handles both single and double quotes)
+          serviceAccount = serviceAccount.trim();
+          
+          // Remove outer quotes if they wrap the entire string
+          if ((serviceAccount.startsWith('"') && serviceAccount.endsWith('"')) ||
+              (serviceAccount.startsWith("'") && serviceAccount.endsWith("'"))) {
+            serviceAccount = serviceAccount.slice(1, -1);
+          }
+          
+          // Handle escaped characters - replace escaped newlines and quotes
+          serviceAccount = serviceAccount
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\'/g, "'")
+            .replace(/\\\\/g, '\\');
+          
+          serviceAccount = serviceAccount.trim();
+          
+          // Try to parse as JSON
+          // If it starts with {, it's likely a JSON object
+          if (serviceAccount.startsWith('{')) {
+            serviceAccountJson = JSON.parse(serviceAccount);
+            console.log('✅ Using FIREBASE_SERVICE_ACCOUNT JSON string from environment variable');
+          } else {
+            // If it doesn't start with {, it might be base64 encoded or have extra whitespace
+            // Try to find the first { and last }
+            const firstBrace = serviceAccount.indexOf('{');
+            const lastBrace = serviceAccount.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+              const jsonPart = serviceAccount.substring(firstBrace, lastBrace + 1);
+              serviceAccountJson = JSON.parse(jsonPart);
+              console.log('✅ Using FIREBASE_SERVICE_ACCOUNT JSON (extracted from string)');
+            } else {
+              throw new Error('Service account string does not contain valid JSON');
+            }
+          }
         } catch (parseError: any) {
           console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', parseError.message);
-          console.error('First 100 chars of service account:', serviceAccount.substring(0, 100));
+          console.error('First 200 chars of service account:', serviceAccount.substring(0, 200));
+          console.error('Last 100 chars of service account:', serviceAccount.substring(Math.max(0, serviceAccount.length - 100)));
           // Continue to try other options
         }
       }
