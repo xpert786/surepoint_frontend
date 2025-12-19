@@ -26,7 +26,7 @@ export function BillingPortalButton() {
     setError('');
 
     try {
-      const response = await fetch('/api/stripe/billing-portal', {
+      const response = await fetch('/surepoint-frontend/api/stripe/billing-portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

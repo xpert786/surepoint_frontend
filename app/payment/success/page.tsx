@@ -46,7 +46,7 @@ function PaymentSuccessContent() {
         let paymentVerified = false;
         let sessionData: any = null;
         try {
-          const verifyResponse = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`);
+          const verifyResponse = await fetch(`/surepoint-frontend/api/stripe/verify-session?session_id=${sessionId}`);
           sessionData = await verifyResponse.json();
           paymentVerified = sessionData.paid === true;
         } catch (err) {
@@ -60,7 +60,7 @@ function PaymentSuccessContent() {
         if (paymentVerified && billingStatus !== 'active' && billingStatus !== 'paid') {
           console.log('💳 Payment verified but billing not updated, manually updating...');
           try {
-            const updateResponse = await fetch('/api/stripe/update-billing-after-payment', {
+            const updateResponse = await fetch('/surepoint-frontend/api/stripe/update-billing-after-payment', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ function PaymentSuccessContent() {
             attempts++;
             try {
               // Verify with Stripe
-              const verifyResponse = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`);
+              const verifyResponse = await fetch(`/surepoint-frontend/api/stripe/verify-session?session_id=${sessionId}`);
               const verifyData = await verifyResponse.json();
 
               if (verifyData.paid) {
