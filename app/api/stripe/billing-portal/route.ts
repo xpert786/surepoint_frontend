@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  */
 function getBaseUrl(request: NextRequest): string {
   // Try to get from environment variable first (for production)
-  const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL;
+  const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://demosurepoint.unicornaaps.com";
   if (envBaseUrl) {
     return envBaseUrl;
   }
