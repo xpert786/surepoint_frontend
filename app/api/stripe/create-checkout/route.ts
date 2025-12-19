@@ -4,6 +4,37 @@ import { getStripe, PLANS } from '@/lib/stripe/config';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Get the correct base URL from request headers (handles nginx proxy)
+ */
+function getBaseUrl(request: NextRequest): string {
+  // Try to get from environment variable first (for production)
+  const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL;
+  if (envBaseUrl) {
+    return envBaseUrl;
+  }
+
+  // Get from forwarded headers (nginx proxy)
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+  const host = request.headers.get('host');
+
+  // Use forwarded headers if available (production behind nginx)
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  // Fallback to host header
+  if (host) {
+    const protocol = request.headers.get('x-forwarded-proto') || 
+                     (request.url.startsWith('https') ? 'https' : 'http');
+    return `${protocol}://${host}`;
+  }
+
+  // Last resort: use nextUrl (might be localhost in production)
+  return request.nextUrl.origin;
+}
+
+/**
  * Create Stripe Checkout Session
  * Frontend calls this → Returns Checkout URL → Redirect user
  */
@@ -45,8 +76,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${request.nextUrl.origin}/surepoint-frontend/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/surepoint-frontend/payment`,
+      success_url: `${getBaseUrl(request)}/surepoint-frontend/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getBaseUrl(request)}/surepoint-frontend/payment`,
       metadata: {
         userId: userId, // Firebase user ID
         firebaseUserId: userId, // Backup field
