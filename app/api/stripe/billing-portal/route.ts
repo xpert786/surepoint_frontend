@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${request.nextUrl.origin}/dashboard`,
+      return_url: `${request.nextUrl.origin}/surepoint-frontend/dashboard`,
     });
 
     return NextResponse.json({
