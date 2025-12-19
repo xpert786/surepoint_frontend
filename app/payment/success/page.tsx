@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { getApiUrl } from '@/lib/utils';
 
 function PaymentSuccessContent() {
   const { user, userData, loading, refreshUserData } = useAuth();
@@ -80,7 +81,7 @@ function PaymentSuccessContent() {
               await new Promise(resolve => setTimeout(resolve, 1000));
               
               // Verify the update worked
-              const updatedUserData = await fetch(`/api/debug/user-billing?userId=${user?.uid}`);
+              const updatedUserData = await fetch(getApiUrl(`/api/debug/user-billing?userId=${user?.uid}`));
               if (updatedUserData.ok) {
                 const debugData = await updatedUserData.json();
                 console.log('📊 Current billing status in DB:', debugData.data);

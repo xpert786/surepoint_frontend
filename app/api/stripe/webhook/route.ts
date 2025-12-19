@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/config';
+import { getStripe } from '@/lib/stripe/config';
+
+export const dynamic = 'force-dynamic';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
@@ -35,6 +37,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Initialize Stripe at the top level so it's accessible throughout the function
+  const stripe = getStripe();
   let event;
 
   try {

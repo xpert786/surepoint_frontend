@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { CreditCard } from 'lucide-react';
+import { getApiUrl } from '@/lib/utils';
 
 export function BillingPortalButton() {
   const { user, userData } = useAuth();
