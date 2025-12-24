@@ -7,6 +7,9 @@ import { Search, Eye, Edit, Trash2, Plus, X, ChevronDown } from 'lucide-react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { User } from '@/types';
+import { getApiUrl } from '@/lib/utils';
+import { canAccessSection } from '@/lib/auth/roles';
+import { useRouter } from 'next/navigation';
 
 interface TeamMember {
   id: string;
@@ -20,6 +23,7 @@ interface TeamMember {
 
 export default function UsersPage() {
   const { userData, user, refreshUserData } = useAuth();
+  const router = useRouter();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,13 +31,22 @@ export default function UsersPage() {
   const itemsPerPage = 10;
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Check if user can access Users page
+  useEffect(() => {
+    if (userData && !canAccessSection(userData, 'users')) {
+      router.push('/dashboard');
+    }
+  }, [userData, router]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     role: '',
     sendEmail: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     async function loadUsers() {
@@ -313,16 +326,18 @@ export default function UsersPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-900">Add Team Member</h2>
               <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setFormData({
-                    firstName: '',
-                    lastName: '',
-                    email: '',
-                    role: '',
-                    sendEmail: false,
-                  });
-                }}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setFormData({
+                      firstName: '',
+                      lastName: '',
+                      email: '',
+                      password: '',
+                      role: '',
+                      sendEmail: false,
+                    });
+                    setShowPassword(false);
+                  }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="h-5 w-5" />
@@ -335,34 +350,37 @@ export default function UsersPage() {
                 e.preventDefault();
                 if (!user || !userData) return;
 
+                // Validate password
+                if (!formData.password || formData.password.length < 6) {
+                  alert('Password must be at least 6 characters long');
+                  return;
+                }
+
                 setSaving(true);
                 try {
-                  const userRef = doc(db, 'users', user.uid);
-                  const userDoc: any = userData as any;
-                  const existingOnboardingInfo = userDoc?.onboardingInfo || {};
-                  const existingTeamInfo = existingOnboardingInfo?.teamInfo || {};
-                  const existingMembers = existingTeamInfo?.members || [];
-
-                  // Add new team member to the array
-                  const newMember = {
-                    name: `${formData.firstName} ${formData.lastName}`.trim(),
-                    email: formData.email.trim().toLowerCase(),
-                    role: formData.role || 'Operator',
-                  };
-
-                  // Update the entire onboardingInfo structure
-                  await updateDoc(userRef, {
-                    onboardingInfo: {
-                      ...existingOnboardingInfo,
-                      teamInfo: {
-                        ...existingTeamInfo,
-                        members: [...existingMembers, newMember],
-                      },
+                  // Call API to create team member with password
+                  const response = await fetch(getApiUrl('/api/team/create-member'), {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
                     },
-                    updatedAt: serverTimestamp(),
+                    body: JSON.stringify({
+                      email: formData.email.trim().toLowerCase(),
+                      password: formData.password,
+                      name: `${formData.firstName} ${formData.lastName}`.trim(),
+                      role: formData.role || 'Operator',
+                      ownerId: user.uid,
+                      ownerClientId: (userData as any)?.clientId,
+                    }),
                   });
 
-                  console.log('Team member added successfully:', newMember);
+                  const data = await response.json();
+
+                  if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create team member');
+                  }
+
+                  console.log('Team member created successfully:', data);
 
                   // Close modal and reset form
                   setShowAddModal(false);
@@ -370,6 +388,7 @@ export default function UsersPage() {
                     firstName: '',
                     lastName: '',
                     email: '',
+                    password: '',
                     role: '',
                     sendEmail: false,
                   });
@@ -381,6 +400,7 @@ export default function UsersPage() {
                   await refreshUserData();
                   
                   console.log('User data refreshed, team members should now be visible');
+                  alert('Team member created successfully! They can now log in with their email and password.');
                 } catch (error: any) {
                   console.error('Error adding team member:', error);
                   alert('Failed to add team member: ' + (error.message || 'Unknown error'));
@@ -434,6 +454,40 @@ export default function UsersPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Enter password (min 6 characters)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Minimum 6 characters. Team member will use this to log in.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Role
                 </label>
                 <div className="relative">
@@ -445,29 +499,14 @@ export default function UsersPage() {
                   >
                     <option value="">Select</option>
                     <option value="Manager">Manager</option>
-                    <option value="Operator">Operator</option>
                     <option value="Admin">Admin</option>
-                    <option value="COO">COO</option>
-                    <option value="CEO">CEO</option>
+                    <option value="Operator">Operator</option>
+                 
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Send Invitation Email
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.sendEmail}
-                    onChange={(e) => setFormData({ ...formData, sendEmail: e.target.checked })}
-                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                  />
-                  <span className="text-sm text-gray-700">Yes, send welcome email with login credentials</span>
-                </label>
-              </div>
 
               <div className="flex items-center gap-4 pt-4">
                 <button
@@ -485,9 +524,11 @@ export default function UsersPage() {
                       firstName: '',
                       lastName: '',
                       email: '',
+                      password: '',
                       role: '',
                       sendEmail: false,
                     });
+                    setShowPassword(false);
                   }}
                   className="flex-1 border border-gray-300 bg-white text-gray-700 font-semibold px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
                 >

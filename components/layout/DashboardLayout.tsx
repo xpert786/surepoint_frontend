@@ -27,11 +27,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     // Check payment status first, then onboarding completion
     if (userData) {
-      // Skip billing checks for admin and COO roles (case-insensitive)
+      // Check if user is a team member (added by admin)
+      const isTeamMember = (userData as any)?.isTeamMember === true || (userData as any)?.ownerId;
+      
+      // Skip billing checks for admin, COO roles, and team members
       const userRole = userData.role?.toLowerCase();
       const isAdminOrCOO = userRole === 'admin' || userRole === 'coo';
       
-      if (!isAdminOrCOO) {
+      if (!isAdminOrCOO && !isTeamMember) {
         const billingStatus = userData.billing?.status || userData.paymentStatus;
         
         // If payment is not active, redirect to payment page first
@@ -42,31 +45,34 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       }
       
-      // After payment is confirmed, check onboarding completion - Company and Integrations are mandatory
-      const onboardingInfo = (userData as any)?.onboardingInfo || {};
-      const companyInfo = onboardingInfo?.companyInfo || {};
-      const integrationsInfo = onboardingInfo?.integrationsInfo || {};
-      
-      // Check if mandatory onboarding steps are completed
-      const hasCompanyInfo = companyInfo.businessName && 
-                            companyInfo.businessType && 
-                            companyInfo.registeredAddress && 
-                            companyInfo.warehouseAddress &&
-                            companyInfo.timezone &&
-                            companyInfo.supportEmail;
-      
-      const hasIntegrationsInfo = integrationsInfo.shopifyLink || integrationsInfo.shipstationLink;
-      
-      // If mandatory steps are not completed, redirect to onboarding
-      if (!hasCompanyInfo || !hasIntegrationsInfo) {
-        setIsRedirecting(true);
-        // Determine which step to redirect to
-        if (!hasCompanyInfo) {
-          router.push('/onboarding/company');
-        } else if (!hasIntegrationsInfo) {
-          router.push('/onboarding/integrations');
+      // Team members skip onboarding - they inherit owner's company setup
+      if (!isTeamMember) {
+        // After payment is confirmed, check onboarding completion - Company and Integrations are mandatory
+        const onboardingInfo = (userData as any)?.onboardingInfo || {};
+        const companyInfo = onboardingInfo?.companyInfo || {};
+        const integrationsInfo = onboardingInfo?.integrationsInfo || {};
+        
+        // Check if mandatory onboarding steps are completed
+        const hasCompanyInfo = companyInfo.businessName && 
+                              companyInfo.businessType && 
+                              companyInfo.registeredAddress && 
+                              companyInfo.warehouseAddress &&
+                              companyInfo.timezone &&
+                              companyInfo.supportEmail;
+        
+        const hasIntegrationsInfo = integrationsInfo.shopifyLink || integrationsInfo.shipstationLink;
+        
+        // If mandatory steps are not completed, redirect to onboarding
+        if (!hasCompanyInfo || !hasIntegrationsInfo) {
+          setIsRedirecting(true);
+          // Determine which step to redirect to
+          if (!hasCompanyInfo) {
+            router.push('/onboarding/company');
+          } else if (!hasIntegrationsInfo) {
+            router.push('/onboarding/integrations');
+          }
+          return;
         }
-        return;
       }
     }
     // If userData is null but user exists, wait a bit for it to load

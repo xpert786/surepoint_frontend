@@ -12,9 +12,19 @@ import { formatCurrency } from '@/lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
 import { DollarSign, TrendingUp, AlertCircle, Package } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
+import { canAccessSection, isTeamMember } from '@/lib/auth/roles';
+import { useRouter } from 'next/navigation';
 
 export default function KPIsPage() {
   const { userData, user } = useAuth();
+  const router = useRouter();
+  
+  // Check if user can access KPIs
+  useEffect(() => {
+    if (userData && !canAccessSection(userData, 'kpis')) {
+      router.push('/dashboard');
+    }
+  }, [userData, router]);
   const [kpiSummary, setKpiSummary] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +46,13 @@ export default function KPIsPage() {
         console.log('Final clientId used:', clientId);
         console.log('userData.role:', userData.role);
         
+        // Check if user is a team member
+        const userIsTeamMember = isTeamMember(userData);
+        
         // Fetch KPI summary and orders in parallel
         const [kpiData, ordersData] = await Promise.all([
           getKPISummary(clientId, userData.role),
-          getOrders(clientId, userData.role, 1000)
+          getOrders(clientId, userData.role, 1000, userIsTeamMember)
         ]);
 
         console.log('=== KPI Summary Data ===');

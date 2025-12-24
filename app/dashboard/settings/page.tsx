@@ -8,6 +8,7 @@ import { Eye, EyeOff, Copy, Check, X, DollarSign, Calendar, FileText, CreditCard
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import Link from 'next/link';
+import { canAccessSection, getRolePermissions } from '@/lib/auth/roles';
 
 type SettingsTab = 'account' | 'integration' | 'billing';
 
@@ -15,6 +16,16 @@ function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, userData, refreshUserData } = useAuth();
+  
+  // Check if user can access Settings
+  useEffect(() => {
+    if (userData && !canAccessSection(userData, 'settings')) {
+      router.push('/dashboard');
+    }
+  }, [userData, router]);
+  
+  // Get permissions
+  const permissions = getRolePermissions(userData);
   
   // Get active tab from URL, default to 'account'
   const activeTab = (searchParams.get('tab') as SettingsTab) || 'account';
@@ -238,25 +249,20 @@ function SettingsContent() {
             >
               Integration
             </button>
-            {(() => {
-              const userRole = userData?.role?.toLowerCase();
-              const isCOO = userRole === 'coo';
-              if (isCOO) return null;
-              return (
-                <button
-                  onClick={() => handleTabChange('billing')}
-                  className={`
-                    py-4 px-1 border-b-2 font-medium text-sm
-                    ${activeTab === 'billing'
-                      ? 'border-orange-500 text-orange-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  Billing
-                </button>
-              );
-            })()}
+            {permissions.canManageBilling && (
+              <button
+                onClick={() => handleTabChange('billing')}
+                className={`
+                  py-4 px-1 border-b-2 font-medium text-sm
+                  ${activeTab === 'billing'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                Billing
+              </button>
+            )}
           </nav>
         </div>
 
@@ -800,7 +806,7 @@ function SettingsContent() {
         })()}
 
         {/* Billing Tab */}
-        {activeTab === 'billing' && (() => {
+        {activeTab === 'billing' && permissions.canManageBilling && (() => {
           const billingData = (userData as any)?.billing || {};
           const planName = billingData.plan || userData?.subscriptionTier || 'basic';
           const planPrice = planName === 'basic' ? 29.99 : planName === 'pro' ? 99.99 : 299.99;

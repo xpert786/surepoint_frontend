@@ -14,14 +14,25 @@ import {
 import { db } from './config';
 import { Order, UserRole, Address } from '@/types';
 
-export async function getOrders(clientId?: string, userRole?: UserRole, limitCount: number = 50): Promise<Order[]> {
+export async function getOrders(clientId?: string, userRole?: UserRole, limitCount: number = 50, isTeamMember?: boolean): Promise<Order[]> {
   try {
-    console.log('getOrders called with:', { clientId, userRole, limitCount });
+    console.log('getOrders called with:', { clientId, userRole, limitCount, isTeamMember });
     
     let q;
     // Orders are stored in the 'testing' collection with 'client_id' field
-    if (userRole === 'coo' || userRole === 'admin') {
-      // COO and Admin can see all orders
+    
+    // Team members (managers/workers) should only see their owner's orders, not all orders
+    // Even if they have 'admin' role, they're team members and should be filtered by clientId
+    if (isTeamMember && clientId) {
+      // Team members can only see their owner's orders - filter by client_id
+      console.log('Querying orders for team member with clientId:', clientId);
+      q = query(
+        collection(db, 'testing'),
+        where('client_id', '==', clientId),
+        limit(limitCount)
+      );
+    } else if (userRole === 'coo' || (userRole === 'admin' && !isTeamMember)) {
+      // COO and Admin (non-team members) can see all orders
       console.log('Querying all orders (COO/Admin)');
       q = query(collection(db, 'testing'), limit(limitCount));
     } else if (clientId) {

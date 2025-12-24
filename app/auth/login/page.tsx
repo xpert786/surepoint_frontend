@@ -25,11 +25,14 @@ export default function LoginPage() {
   // Handle redirect after login based on billing status
   useEffect(() => {
     if (justLoggedIn && userData && !authLoading) {
+      // Check if user is a team member (added by admin)
+      const isTeamMember = (userData as any)?.isTeamMember === true || (userData as any)?.ownerId;
       const userRole = userData.role?.toLowerCase();
       const isAdminOrCOO = userRole === 'admin' || userRole === 'coo';
       
-      // Skip billing check for admin/COO roles
-      if (!isAdminOrCOO) {
+      // Skip billing check for admin/COO roles and team members
+      // Team members inherit owner's billing status
+      if (!isAdminOrCOO && !isTeamMember) {
         const billingStatus = userData.billing?.status || userData.paymentStatus;
         
         // If payment is not active/paid, redirect to payment page
@@ -40,7 +43,8 @@ export default function LoginPage() {
         }
       }
       
-      // If billing is paid or user is admin/COO, redirect to dashboard
+      // If billing is paid, user is admin/COO, or team member, redirect to dashboard
+      // Team members skip onboarding and go directly to dashboard
       router.push('/dashboard');
       setJustLoggedIn(false);
     }

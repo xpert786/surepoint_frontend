@@ -7,11 +7,13 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Building2, Users, Link2, CheckSquare } from 'lucide-react';
 import { OnboardingStepper } from '@/components/onboarding/OnboardingStepper';
+import { getApiUrl } from '@/lib/utils';
 
 type TeamMember = {
   name: string;
   email: string;
   role: string;
+  password?: string;
 };
 
 type TeamSetup = {
@@ -20,7 +22,7 @@ type TeamSetup = {
 
 const DEFAULT_TEAM: TeamSetup = {
   members: [
-    { name: '', email: '', role: '' },
+    { name: '', email: '', role: '', password: '' },
   ],
 };
 
@@ -33,12 +35,13 @@ export default function TeamSetupPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<number, Partial<Record<keyof TeamMember, string>>>>({});
   const [saveError, setSaveError] = useState<string>('');
+  const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
 
   // Prefill from userData if available
   const initialTeam = useMemo(() => {
     const data: any = userData as any;
     return {
-      members: data?.onboardingInfo?.teamInfo?.members || [{ name: '', email: '', role: '' }],
+      members: data?.onboardingInfo?.teamInfo?.members?.map((m: any) => ({ ...m, password: '' })) || [{ name: '', email: '', role: '', password: '' }],
     };
   }, [userData]);
 
@@ -93,6 +96,10 @@ export default function TeamSetupPage() {
         memberErrors.role = 'Role is required';
       }
 
+      if (!member.password || member.password.length < 6) {
+        memberErrors.password = 'Password must be at least 6 characters';
+      }
+
       // Check for duplicate emails
       const duplicateIndex = team.members.findIndex(
         (m, i) => i !== index && m.email.trim().toLowerCase() === member.email.trim().toLowerCase() && m.email.trim() !== ''
@@ -118,7 +125,7 @@ export default function TeamSetupPage() {
   const addMember = () => {
     setTeam((prev) => ({
       ...prev,
-      members: [...prev.members, { name: '', email: '', role: '' }],
+      members: [...prev.members, { name: '', email: '', role: '', password: '' }],
     }));
   };
 
@@ -169,6 +176,11 @@ export default function TeamSetupPage() {
           hasErrors = true;
         }
 
+        if (!member.password || member.password.length < 6) {
+          memberError.password = 'Password must be at least 6 characters';
+          hasErrors = true;
+        }
+
         // Check for duplicate emails
         const duplicateIndex = validMembers.findIndex(
           (m, i) => i !== index && m.email.trim().toLowerCase() === member.email.trim().toLowerCase() && m.email.trim() !== ''
@@ -209,13 +221,41 @@ export default function TeamSetupPage() {
     setSaveError('');
     
     try {
+      // Create team members with passwords via API
+      const createPromises = membersToSave
+        .filter((member) => member.email.trim() && member.name.trim() && member.role && member.password)
+        .map(async (member) => {
+          const response = await fetch(getApiUrl('/api/team/create-member'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: member.email.trim().toLowerCase(),
+              password: member.password,
+              name: member.name.trim(),
+              role: member.role,
+              ownerId: user.uid,
+              ownerClientId: (userData as any)?.clientId,
+            }),
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to create team member');
+          }
+
+          return response.json();
+        });
+
+      await Promise.all(createPromises);
+
+      // Also save to onboardingInfo for display
       const userRef = doc(db, 'users', user.uid);
       const userDoc: any = userData as any;
-      
-      // Get existing onboardingInfo or create new structure
       const existingOnboardingInfo = userDoc?.onboardingInfo || {};
       
-      // Clean and validate members before saving
+      // Clean members (without password) for storage
       const cleanedMembers = membersToSave
         .filter((member) => member.email.trim() && member.name.trim() && member.role)
         .map((member) => ({
@@ -270,7 +310,7 @@ export default function TeamSetupPage() {
             {/* Information Banner */}
             <div className="border-2 border-orange-400 bg-orange-50 rounded-lg px-4 py-3">
               <p className="text-sm text-gray-700">
-                Invite your team members to collaborate. They'll receive an email invitation.
+                Add team members by creating their accounts. They can log in with their email and password.
               </p>
             </div>
 
@@ -306,7 +346,7 @@ export default function TeamSetupPage() {
               <div className="bg-white border border-gray-200 rounded-lg p-5">
                 {team.members.map((member, index) => (
                   <div key={index} className={index > 0 ? 'mt-4 pt-4 border-t border-gray-200' : ''}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
                         <label className="block text-sm font-semibold text-gray-700">
                           Email {index === 0 && <span className="text-red-500">*</span>}
@@ -356,11 +396,10 @@ export default function TeamSetupPage() {
                             }`}
                           >
                             <option value="">Select role</option>
-                            <option value="Owner">Owner</option>
                             <option value="Manager">Manager</option>
                             <option value="Admin">Admin</option>
                             <option value="Operator">Operator</option>
-                            <option value="Viewer">Viewer</option>
+                        
                           </select>
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,6 +410,44 @@ export default function TeamSetupPage() {
                         {errors[index]?.role && (
                           <p className="text-xs text-red-600">{errors[index].role}</p>
                         )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Password {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords[index] ? 'text' : 'password'}
+                            value={member.password || ''}
+                            onChange={(e) => handleMemberChange(index, 'password', e.target.value)}
+                            minLength={6}
+                            className={`w-full rounded-md border px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent pr-10 ${
+                              errors[index]?.password ? 'border-red-300' : 'border-gray-300'
+                            }`}
+                            placeholder="Enter password (min 6 characters)"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, [index]: !showPasswords[index] })}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPasswords[index] ? (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 3m3.29 3.29L3 3" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.522 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        {errors[index]?.password && (
+                          <p className="text-xs text-red-600">{errors[index].password}</p>
+                        )}
+                        <p className="text-xs text-gray-500">Minimum 6 characters. Team member will use this to log in.</p>
                         {index > 0 && (
                           <button
                             type="button"

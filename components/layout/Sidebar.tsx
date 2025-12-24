@@ -20,23 +20,25 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import logo from '../../public/assets/logo.png';
+import { canAccessSection, getUserRole } from '@/lib/auth/roles';
 
 const allNavigationItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Orders', href: '/dashboard/orders', icon: List },
-  { name: 'Clients', href: '/dashboard/clients', icon: Users, roles: ['COO'] },
-  { name: "Analytics & KPI's", href: '/dashboard/kpis', icon: BarChart3 },
-  { name: 'Users & Roles', href: '/dashboard/users', icon: Users },
-  { name: 'Logs & Audits', href: '/dashboard/logs', icon: FileText },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'dashboard' },
+  { name: 'Orders', href: '/dashboard/orders', icon: List, section: 'orders' },
+  { name: 'Clients', href: '/dashboard/clients', icon: Users, section: 'clients' },
+  { name: "Analytics & KPI's", href: '/dashboard/kpis', icon: BarChart3, section: 'kpis' },
+  { name: 'Users & Roles', href: '/dashboard/users', icon: Users, section: 'users' },
+  { name: 'Logs & Audits', href: '/dashboard/logs', icon: FileText, section: 'logs' },
   { 
     name: 'Settings', 
     href: '/dashboard/settings', 
     icon: Settings, 
+    section: 'settings',
     hasDropdown: true,
     subItems: [
       { name: 'Account Settings', href: '/dashboard/settings?tab=account' },
       { name: 'Integration', href: '/dashboard/settings?tab=integration' },
-      { name: 'Billing', href: '/dashboard/settings?tab=billing', roles: ['client', 'admin'] },
+      { name: 'Billing', href: '/dashboard/settings?tab=billing', section: 'billing' },
     ]
   },
 ];
@@ -57,14 +59,18 @@ export function Sidebar() {
     }
   }, [isSettingsActive, expandedItems]);
   
-  // Filter navigation items based on user role
+  // Filter navigation items based on user role and permissions
   const navigation = allNavigationItems.filter((item) => {
-    // If item has roles restriction, check if user role matches (case-insensitive)
-    if (item.roles && userData?.role) {
-      const userRoleLower = userData.role.toLowerCase();
-      return item.roles.some(role => role.toLowerCase() === userRoleLower);
+    // Use role-based access control
+    if (item.section) {
+      return canAccessSection(userData, item.section);
     }
-    // If no roles restriction, show to everyone
+    // Legacy roles check (for backward compatibility)
+    if ('roles' in item && Array.isArray(item.roles) && userData?.role) {
+      const userRoleLower = userData.role.toLowerCase();
+      return item.roles.some((role: string) => role.toLowerCase() === userRoleLower);
+    }
+    // If no restriction, show to everyone
     return true;
   });
 
@@ -146,10 +152,14 @@ export function Sidebar() {
                 <div className="ml-4 mt-1 space-y-1">
                   {item.subItems
                     .filter((subItem) => {
-                      // Filter subItems based on roles
-                      if (subItem.roles && userData?.role) {
+                      // Filter subItems based on role-based access control
+                      if (subItem.section) {
+                        return canAccessSection(userData, subItem.section);
+                      }
+                      // Legacy roles check
+                      if ('roles' in subItem && Array.isArray(subItem.roles) && userData?.role) {
                         const userRoleLower = userData.role.toLowerCase();
-                        return subItem.roles.some(role => role.toLowerCase() === userRoleLower);
+                        return subItem.roles.some((role: string) => role.toLowerCase() === userRoleLower);
                       }
                       return true;
                     })
@@ -177,7 +187,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="pb-4 p-4 bg-[#E79138]">8i
+      <div className="pb-4 p-4 bg-[#E79138]">
         <button
           onClick={logOut}
           className="flex w-full items-center bg-[#FFFFFFB2] border-2 border-[#FFFFFF] space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-[#FF3D00] hover:bg-orange-200 hove:text-white transition-colors"

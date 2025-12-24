@@ -4,9 +4,15 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AlertCircle, Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getRolePermissions } from '@/lib/auth/roles';
 
 export default function InventoryPage() {
+  const { userData } = useAuth();
+  const permissions = getRolePermissions(userData);
+  
   // TODO: Implement inventory fetching from Firebase
+  // Note: Workers can view but not edit inventory (permissions.canEditInventory)
   const lowStockItems = 0;
   const totalItems = 0;
   const totalValue = 0;

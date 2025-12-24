@@ -8,6 +8,7 @@ import { Order } from '@/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Search, Filter, Upload, Eye, Edit, Trash2, ChevronDown } from 'lucide-react';
+import { getRolePermissions, isTeamMember } from '@/lib/auth/roles';
 
 export default function OrdersPage() {
   const { userData, user } = useAuth();
@@ -16,6 +17,9 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Get role permissions
+  const permissions = getRolePermissions(userData);
 
   useEffect(() => {
     async function loadOrders() {
@@ -47,8 +51,11 @@ export default function OrdersPage() {
           fullUserData: userData 
         });
         
-        // Fetch orders filtered by clientId (if client) or all orders (if COO/Admin)
-        const fetchedOrders = await getOrders(clientId, userRole);
+        // Check if user is a team member (manager/worker)
+        const userIsTeamMember = isTeamMember(userData);
+        
+        // Fetch orders filtered by clientId (if client or team member) or all orders (if COO/Admin)
+        const fetchedOrders = await getOrders(clientId, userRole, 50, userIsTeamMember);
         
         console.log(`Found ${fetchedOrders.length} orders for clientId: ${clientId}`);
         console.log('Orders data:', fetchedOrders);
@@ -215,18 +222,22 @@ export default function OrdersPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
-                          <button
-                            className="text-[#535B69] hover:text-[#E79138] transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="text-gray-600 hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {permissions.canEditOrders && (
+                            <>
+                              <button
+                                className="text-[#535B69] hover:text-[#E79138] transition-colors"
+                                title="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                className="text-gray-600 hover:text-red-600 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
